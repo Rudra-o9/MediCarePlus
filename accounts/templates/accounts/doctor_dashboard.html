@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<div class="card" style="width: 600px;">
+    <span class="role-badge">Doctor Dashboard</span>
+
+    <h2>Welcome, {{ user.full_name }}</h2>
+
+    <p class="message-text">
+        Manage your patients, prescriptions, and appointments here.
+    </p>
+
+    <div style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <div style="background:rgba(255,255,255,0.1); padding:20px; border-radius:15px; width:48%;">
+                <h3>Patients</h3>
+                <p style="opacity:0.7;">0 Registered</p>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.1); padding:20px; border-radius:15px; width:48%;">
+                <h3>Prescriptions</h3>
+                <p style="opacity:0.7;">0 Issued</p>
+            </div>
+        </div>
+    </div>
+
+    <a href="{% url 'logout' %}">
+        <button>Logout</button>
+    </a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+    <span class="role-badge">
+        Approval Pending
+    </span>
+
+    <h2>Verification in Progress</h2>
+
+    <p class="message-text">
+        Your account is currently under review by our administration team.
+        You will gain dashboard access once approved.
+    </p>
+
+    <a href="{% url 'logout' %}">
+        <button>Logout</button>
+    </a>
+</div>
+
+{% endblock %}
