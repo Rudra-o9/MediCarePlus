@@ -18,5 +18,12 @@ class CustomUserAdmin(admin.ModelAdmin):
 
     def approve_users(self, request, queryset):
         queryset.update(is_approved=True)
+        user = CustomUser.objects.get(id=user_id)
+
+        user.is_approved = True
+        user.approved_by = request.user   # ← THIS STORES ADMIN
+        user.approved_at = timezone.now()
+
+        user.save()
 
     approve_users.short_description = "Approve selected users"

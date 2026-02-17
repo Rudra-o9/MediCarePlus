@@ -1,73 +1,65 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>MediCarePlus | Hospital Management System</title>
-    <link rel="stylesheet" href="{% static 'css/base.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>MediCarePlus</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
 
-<div class="left-panel">
-    <h1>MediCarePlus</h1>
-    <p style="font-size:22px; font-weight:600; margin-bottom:15px;">
-        Hospital Management System
-    </p>
-    <p>
-        Secure • Role-Based • Enterprise Healthcare Platform.
-        <br><br>
-        Designed for Doctors, Pharmacists and Administrators 
-        to manage patients, prescriptions, inventory and reports.
-    </p>
-</div>
+<div class="particles"></div>
 
-<div class="right-panel">
-    <div class="card">
-        <h2>System Access Portal</h2>
+<nav class="navbar">
+    <div class="logo">MediCarePlus</div>
 
-        <div class="role-badge">🩺 Doctor Panel</div>
-        <p class="message-text">
-            Patient Management • Prescription Creation • Reports
-        </p>
-
-        <div class="role-badge">💊 Pharmacy Panel</div>
-        <p class="message-text">
-            Prescription Processing • Billing • Inventory
-        </p>
-
-        <div class="role-badge">🧾 Admin Panel</div>
-        <p class="message-text">
-            User Management • Stock Monitoring • System Reports
-        </p>
-
-        <div class="auth-buttons">
-
-            <!-- Login Button -->
-            <a href="{% url 'login' %}" class="btn-login">
-                Login
-            </a>
-
-            <!-- Register Dropdown -->
-            <div class="dropdown">
-                <button class="btn-register">
-                    Register ▼
-                </button>
-
-                <div class="dropdown-content">
-                    <a href="{% url 'doctor_register' %}">
-                        🩺 Doctor Registration
-                    </a>
-                    <a href="{% url 'pharmacist_register' %}">
-                        💊 Pharmacist Registration
-                    </a>
-                </div>
+    <div class="nav-buttons">
+        <div class="dropdown">
+            <button class="btn primary-btn">Register</button>
+            <div class="dropdown-menu">
+                <a href="{% url 'doctor_register' %}">Doctor</a>
+                <a href="{% url 'pharmacist_register' %}">Pharmacist</a>
             </div>
-
         </div>
 
-
+        <a href="{% url 'login' %}" class="btn secondary-btn">Login</a>
     </div>
-</div>
+</nav>
+
+<section class="hero">
+    <div class="hero-left">
+        <h1>
+            The Future of <span>Digital Healthcare</span>
+        </h1>
+        <p>
+            Secure, seamless and intelligent medicine management.
+            Experience healthcare the premium way.
+        </p>
+    </div>
+
+    <div class="hero-right">
+        <div class="glass-card">
+            <h2>Smart. Secure. Reliable.</h2>
+            <p>
+                Manage prescriptions, connect with pharmacists,
+                and streamline medical records — all in one elegant platform.
+            </p>
+        </div>
+    </div>
+</section>
+
+<script>
+const particlesContainer = document.querySelector('.particles');
+
+for (let i = 0; i < 40; i++) {
+    const particle = document.createElement('span');
+    particle.classList.add('particle');
+    particle.style.left = Math.random() * 100 + "vw";
+    particle.style.animationDuration = (5 + Math.random() * 10) + "s";
+    particle.style.animationDelay = Math.random() * 5 + "s";
+    particlesContainer.appendChild(particle);
+}
+</script>
 
 </body>
 </html>
