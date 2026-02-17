@@ -32,19 +32,23 @@ def pharmacist_register(request):
 def role_redirect(request):
     user = request.user
 
+    # Admin first
+    if user.is_superuser:
+        return redirect('/admin/')
+
+    # If not approved → pending page
     if not user.is_approved:
         return redirect('pending')
 
-    if user.role == 'ADMIN':
-        return redirect('/admin/')
-
-    elif user.role == 'DOCTOR':
+    # Role-based redirect
+    if user.role == 'DOCTOR':
         return redirect('doctor_dashboard')
 
     elif user.role == 'PHARMACIST':
         return redirect('pharmacist_dashboard')
 
     return redirect('login')
+
 
 @login_required
 def pending_view(request):
@@ -76,3 +80,25 @@ def pharmacist_dashboard(request):
         "user": request.user,
     }
     return render(request, "accounts/pharmacist_dashboard.html", context)
+
+def home(request):
+    user = request.user
+
+    if user.is_authenticated:
+
+        # Admin first
+        # if user.is_superuser:
+        #     return redirect('/admin/')
+
+        # If not approved
+        if not user.is_approved:
+            return redirect('pending')
+
+        # Role-based redirect
+        if user.role == 'DOCTOR':
+            return redirect('doctor_dashboard')
+
+        elif user.role == 'PHARMACIST':
+            return redirect('pharmacist_dashboard')
+
+    return render(request, 'accounts/home.html')

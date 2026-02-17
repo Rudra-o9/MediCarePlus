@@ -1,0 +1,73 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MediCarePlus | Hospital Management System</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="left-panel">
+    <h1>MediCarePlus</h1>
+    <p style="font-size:22px; font-weight:600; margin-bottom:15px;">
+        Hospital Management System
+    </p>
+    <p>
+        Secure • Role-Based • Enterprise Healthcare Platform.
+        <br><br>
+        Designed for Doctors, Pharmacists and Administrators 
+        to manage patients, prescriptions, inventory and reports.
+    </p>
+</div>
+
+<div class="right-panel">
+    <div class="card">
+        <h2>System Access Portal</h2>
+
+        <div class="role-badge">🩺 Doctor Panel</div>
+        <p class="message-text">
+            Patient Management • Prescription Creation • Reports
+        </p>
+
+        <div class="role-badge">💊 Pharmacy Panel</div>
+        <p class="message-text">
+            Prescription Processing • Billing • Inventory
+        </p>
+
+        <div class="role-badge">🧾 Admin Panel</div>
+        <p class="message-text">
+            User Management • Stock Monitoring • System Reports
+        </p>
+
+        <div class="auth-buttons">
+
+            <!-- Login Button -->
+            <a href="{% url 'login' %}" class="btn-login">
+                Login
+            </a>
+
+            <!-- Register Dropdown -->
+            <div class="dropdown">
+                <button class="btn-register">
+                    Register ▼
+                </button>
+
+                <div class="dropdown-content">
+                    <a href="{% url 'doctor_register' %}">
+                        🩺 Doctor Registration
+                    </a>
+                    <a href="{% url 'pharmacist_register' %}">
+                        💊 Pharmacist Registration
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+
+    </div>
+</div>
+
+</body>
+</html>
