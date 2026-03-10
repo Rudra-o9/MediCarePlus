@@ -1,0 +1,77 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Consultations{% endblock %}
+
+{% block sidebar %} <a href="{% url 'doctor_dashboard' %}">Dashboard</a> <a href="{% url 'patients:patient_list' %}">Patients</a> <a href="{% url 'consultations:consultation_list' %}" class="active">Consultations</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="chart-card consultation-card">
+
+```
+<div class="card-header">
+    <h3>🩺 Consultation Records</h3>
+</div>
+
+<div class="table-wrapper">
+
+    <table class="report-table">
+
+        <thead>
+            <tr>
+                <th>Visit No</th>
+                <th>Patient</th>
+                <th>Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+        {% for c in consultations %}
+
+            <tr>
+
+                <td>
+                    <a href="{% url 'consultations:consultation_detail' c.pk %}" class="visit-link">
+                        {{ c.visit_number }}
+                    </a>
+                </td>
+
+                <td class="patient-name">
+                    {{ c.patient.full_name }}
+                </td>
+
+                <td>
+                    {{ c.consultation_date|date:"d M Y" }}
+                </td>
+
+                <td>
+                    <span class="status-badge">
+                        {{ c.status }}
+                    </span>
+                </td>
+
+            </tr>
+
+        {% empty %}
+
+            <tr class="empty-row">
+                <td colspan="4">
+                    No consultations yet
+                </td>
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+```
+
+</div>
+
+{% endblock %}

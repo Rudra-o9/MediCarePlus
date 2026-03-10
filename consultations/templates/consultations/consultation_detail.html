@@ -1,47 +1,127 @@
-<h2>Consultation Detail</h2>
+{% extends "dashboard_base.html" %}
 
-<p><strong>Visit Number:</strong> {{ consultation.visit_number }}</p>
-<p><strong>Date:</strong> {{ consultation.consultation_date }}</p>
-<p><strong>Status:</strong> {{ consultation.status }}</p>
+{% block page_title %}Consultation Detail{% endblock %}
+
+{% block sidebar %} <a href="{% url 'doctor_dashboard' %}">Dashboard</a> <a href="{% url 'patients:patient_list' %}">Patients</a> <a href="{% url 'consultations:consultation_list' %}" class="active">Consultations</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="chart-card">
+
+<h3>🩺 Consultation Detail</h3>
+
+<table class="report-table">
+
+<tr>
+<th>Visit Number</th>
+<td>{{ consultation.visit_number }}</td>
+</tr>
+
+<tr>
+<th>Date</th>
+<td>{{ consultation.consultation_date }}</td>
+</tr>
+
+<tr>
+<th>Status</th>
+<td>{{ consultation.status }}</td>
+</tr>
+
+{% for prescription in consultation.prescriptions.all %}
+
+<tr>
+<th>Prescription Status</th>
+<td>{{ prescription.status }}</td>
+</tr>
+{% endfor %}
+
+</table>
 
 <hr>
 
-<h3>Vitals</h3>
-<p>Blood Pressure: {{ consultation.blood_pressure }}</p>
-<p>Temperature: {{ consultation.temperature }}</p>
-<p>Pulse: {{ consultation.pulse }}</p>
+<h3>🫀 Vitals</h3>
+
+<table class="report-table">
+<tr>
+<th>Blood Pressure</th>
+<td>{{ consultation.blood_pressure|default:"-" }}</td>
+</tr>
+
+<tr>
+<th>Temperature</th>
+<td>{{ consultation.temperature|default:"-" }}</td>
+</tr>
+
+<tr>
+<th>Pulse</th>
+<td>{{ consultation.pulse|default:"-" }}</td>
+</tr>
+</table>
 
 <hr>
 
-<h3>Symptoms</h3>
-<p>{{ consultation.symptoms }}</p>
+<h3>🤒 Symptoms</h3>
+<p>{{ consultation.symptoms|default:"No symptoms recorded." }}</p>
 
-<h3>Notes</h3>
-<p>{{ consultation.notes }}</p>
+<h3>📝 Notes</h3>
+<p>{{ consultation.notes|default:"No notes added." }}</p>
 
 <hr>
 
-<h3>Diagnoses</h3>
+<h3>🧠 Diagnoses</h3>
 
 <ul>
-    {% for diagnosis in consultation.diagnoses.all %}
-        <li>
-            {{ diagnosis.name }}
-            {% if diagnosis.is_primary %}
-                (Primary)
-            {% endif %}
-        </li>
-    {% empty %}
-        <li>No diagnoses added.</li>
-    {% endfor %}
+{% for diagnosis in consultation.diagnoses.all %}
+<li>
+{{ diagnosis.name }}
+{% if diagnosis.is_primary %}
+<strong>(Primary)</strong>
+{% endif %}
+</li>
+{% empty %}
+<li>No diagnoses added.</li>
+{% endfor %}
+</ul>
+
+<hr>
+
+<h3>💊 Prescription</h3>
+
+<ul>
+{% for prescription in consultation.prescriptions.all %}
+
+```
+{% for item in prescription.items.all %}
+    <li>
+    {{ item.medicine.name }} —
+    {{ item.dosage }},
+    {{ item.frequency }},
+    {{ item.duration_days }} days
+    </li>
+{% empty %}
+    <li>No medicines added.</li>
+{% endfor %}
+```
+
+{% endfor %}
+
 </ul>
 
 {% if consultation.status == "OPEN" and user.role == "DOCTOR" %}
-    <hr>
-    <a href="{% url 'add_diagnosis' consultation.pk %}">
-        ➕ Add Diagnosis
-    </a>    
-    <a href="{% url 'add_prescription' consultation.pk %}">
-        ➕ Add Prescription
-    </a>
+
+<hr>
+
+<a href="{% url 'consultations:add_diagnosis' consultation.pk %}" class="btn btn-primary">
+➕ Add Diagnosis
+</a>
+
+<a href="{% url 'consultations:add_prescription' consultation.pk %}" class="btn btn-consult">
+💊 Add Prescription
+</a>
+
 {% endif %}
+
+</div>
+
+{% endblock %}

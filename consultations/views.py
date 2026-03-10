@@ -1,15 +1,15 @@
-# from django.shortcuts import render
-# from django.views.generic import DetailView
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import CreateView, DetailView
-# from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from accounts.mixins import RoleRequiredMixin
 from patients.models import Patient
-from .models import Consultation
+from .models import Consultation, Prescription
 from .forms import ConsultationForm, DiagnosisFormSet, PrescriptionForm, PrescriptionItemFormSet
 from django.views import View
-from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+
 
 class ConsultationCreateView(RoleRequiredMixin, CreateView):
     model = Consultation
@@ -28,8 +28,9 @@ class ConsultationCreateView(RoleRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse('patient_detail', args=[self.patient.pk])
-    
+        return reverse('patients:patient_detail', args=[self.patient.pk])
+
+
 class ConsultationDetailView(RoleRequiredMixin, DetailView):
     model = Consultation
     template_name = 'consultations/consultation_detail.html'
@@ -38,11 +39,12 @@ class ConsultationDetailView(RoleRequiredMixin, DetailView):
     allowed_roles = ['DOCTOR', 'PHARMACIST']
 
     def get_queryset(self):
-        # Only allow access to consultations of patients created by user
-        return Consultation.objects.filter(
-            patient__created_by=self.request.user
-        )    
-    
+        if self.request.user.role == "DOCTOR":
+            return Consultation.objects.filter(doctor=self.request.user)
+
+        return Consultation.objects.all()
+
+
 class AddDiagnosisView(RoleRequiredMixin, View):
     allowed_roles = ['DOCTOR']
 
@@ -50,9 +52,10 @@ class AddDiagnosisView(RoleRequiredMixin, View):
         consultation = get_object_or_404(Consultation, pk=pk)
 
         if consultation.status != "OPEN":
-            return redirect('consultation_detail', pk=pk)
+            return redirect('consultations:consultation_detail', pk=pk)
 
-        formset = DiagnosisFormSet(instance=consultation)
+        # allow extra diagnosis rows
+        formset = DiagnosisFormSet(instance=consultation, queryset=consultation.diagnoses.all())
 
         return render(request, 'consultations/add_diagnosis.html', {
             'consultation': consultation,
@@ -63,19 +66,21 @@ class AddDiagnosisView(RoleRequiredMixin, View):
         consultation = get_object_or_404(Consultation, pk=pk)
 
         if consultation.status != "OPEN":
-            return redirect('consultation_detail', pk=pk)
+            return redirect('consultations:consultation_detail', pk=pk)
 
         formset = DiagnosisFormSet(request.POST, instance=consultation)
 
         if formset.is_valid():
             formset.save()
-            return redirect('consultation_detail', pk=pk)
+
+            return redirect('consultations:consultation_detail', pk=consultation.pk)
 
         return render(request, 'consultations/add_diagnosis.html', {
             'consultation': consultation,
             'formset': formset
-        })    
-    
+        })
+
+
 class AddPrescriptionView(RoleRequiredMixin, View):
     allowed_roles = ['DOCTOR']
 
@@ -83,7 +88,7 @@ class AddPrescriptionView(RoleRequiredMixin, View):
         consultation = get_object_or_404(Consultation, pk=pk)
 
         if consultation.status != "OPEN":
-            return redirect('consultation_detail', pk=pk)
+            return redirect('consultations:consultation_detail', pk=pk)
 
         form = PrescriptionForm()
         formset = PrescriptionItemFormSet()
@@ -99,25 +104,88 @@ class AddPrescriptionView(RoleRequiredMixin, View):
         consultation = get_object_or_404(Consultation, pk=pk)
 
         if consultation.status != "OPEN":
-            return redirect('consultation_detail', pk=pk)
+            return redirect('consultations:consultation_detail', pk=pk)
 
         form = PrescriptionForm(request.POST)
         formset = PrescriptionItemFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
-            prescription = form.save(commit=False)
-            prescription.consultation = consultation
+
+            prescription = consultation.prescriptions.first()
+
+            prescription.notes = form.cleaned_data["notes"]
             prescription.save()
 
             items = formset.save(commit=False)
+
             for item in items:
                 item.prescription = prescription
                 item.save()
 
-            return redirect('consultation_detail', pk=pk)
+            return redirect("consultations:consultation_detail", pk=pk)
 
         return render(request, 'consultations/add_prescription.html', {
             'consultation': consultation,
             'form': form,
             'formset': formset
-        })    
+        })
+
+
+@login_required
+def consultation_list(request):
+
+    if request.user.role != "DOCTOR":
+        raise PermissionDenied("Doctors only.")
+
+    consultations = Consultation.objects.filter(
+        doctor=request.user
+    ).select_related("patient")
+
+    return render(
+        request,
+        "consultations/consultation_list.html",
+        {
+            "consultations": consultations
+        }
+    )
+
+
+@login_required
+def start_consultation(request, patient_id):
+
+    if request.user.role != "DOCTOR":
+        raise PermissionDenied("Doctors only")
+
+    patient = get_object_or_404(Patient, id=patient_id)
+
+    if request.method == "POST":
+
+        symptoms = request.POST.get("symptoms")
+        blood_pressure = request.POST.get("blood_pressure")
+        temperature = request.POST.get("temperature")
+        pulse = request.POST.get("pulse")
+        notes = request.POST.get("notes")
+
+        consultation = Consultation.objects.create(
+            patient=patient,
+            doctor=request.user,
+            symptoms=symptoms,
+            blood_pressure=blood_pressure,
+            temperature=temperature if temperature else None,
+            pulse=pulse if pulse else None,
+            notes=notes
+        )
+
+        Prescription.objects.create(
+            consultation=consultation
+        )
+
+        return redirect("consultations:consultation_detail", pk=consultation.pk)
+
+    return render(
+        request,
+        "consultations/start_consultation.html",
+        {
+            "patient": patient
+        }
+    )

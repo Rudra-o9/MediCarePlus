@@ -27,7 +27,7 @@ class Consultation(models.Model):
     def save(self, *args, **kwargs):
         if not self.visit_number:
             year = timezone.now().year
-            last_visit = Consultation.objects.filter(visit_number__startswith=f"CONS-{year}").aggregate(Max('visit_number'))
+            last_visit = Consultation.objects.filter(visit_number__startswith=f"CONS-{year}-").aggregate(Max('visit_number'))
             if last_visit['visit_number__max']:
                 last_number = int(last_visit['visit_number__max'].split('-')[-1])
                 new_number = last_number + 1

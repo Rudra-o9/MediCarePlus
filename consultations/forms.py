@@ -21,10 +21,10 @@ class DiagnosisForm(forms.ModelForm):
 DiagnosisFormSet = inlineformset_factory(
     Consultation,
     Diagnosis,
-    form=DiagnosisForm,
-    extra=3,   # show 3 empty rows initially
+    fields=["name", "description", "is_primary"],
+    extra=2,
     can_delete=False
-)        
+)       
 
 class PrescriptionForm(forms.ModelForm):
     class Meta:

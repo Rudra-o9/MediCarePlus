@@ -1,36 +1,85 @@
-<h2>Add Prescription</h2>
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Add Prescription{% endblock %}
+
+{% block sidebar %} <a href="{% url 'doctor_dashboard' %}">Dashboard</a> <a href="{% url 'patients:patient_list' %}">Patients</a> <a href="{% url 'consultations:consultation_list' %}" class="active">Consultations</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="chart-card">
+
+<h3>💊 Add Prescription</h3>
 
 <p><strong>Visit:</strong> {{ consultation.visit_number }}</p>
 
+<hr>
+
 <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
 
-    <hr>
+{% csrf_token %}
 
-    {{ formset.management_form }}
+<div class="form-row">
+<label>Notes</label>
+{{ form.notes }}
+</div>
 
-    <table>
-        <tr>
-            <th>Medicine</th>
-            <th>Dosage</th>
-            <th>Frequency</th>
-            <th>Duration</th>
-            <th>Quantity</th>
-            <th>Instructions</th>
-        </tr>
+<hr>
 
-        {% for form in formset %}
-        <tr>
-            <td>{{ form.medicine }}</td>
-            <td>{{ form.dosage }}</td>
-            <td>{{ form.frequency }}</td>
-            <td>{{ form.duration_days }}</td>
-            <td>{{ form.quantity_prescribed }}</td>
-            <td>{{ form.instructions }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+<table class="report-table prescription-table">
 
-    <button type="submit">Save Prescription</button>
+<thead>
+<tr>
+<th style="width:20%">Medicine</th>
+<th style="width:12%">Dosage</th>
+<th style="width:12%">Frequency</th>
+<th style="width:12%">Duration</th>
+<th style="width:12%">Quantity</th>
+<th style="width:32%">Instructions</th>
+</tr>
+</thead>
+
+<tbody>
+
+{{ formset.management_form }}
+
+{% for form in formset %}
+
+<tr>
+
+<td>{{ form.medicine }}</td>
+
+<td>{{ form.dosage }}</td>
+
+<td>{{ form.frequency }}</td>
+
+<td>{{ form.duration_days }}</td>
+
+<td>{{ form.quantity_prescribed }}</td>
+
+<td>{{ form.instructions }}</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+<br>
+
+<button type="submit" class="btn btn-primary">
+💾 Save Prescription
+</button>
+
+<a href="{% url 'consultations:consultation_detail' consultation.pk %}" class="btn btn-consult">
+← Back to Consultation
+</a>
+
 </form>
+
+</div>
+
+{% endblock %}
+

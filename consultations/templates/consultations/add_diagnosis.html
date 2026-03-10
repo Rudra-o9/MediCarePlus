@@ -1,20 +1,78 @@
-<h2>Add Diagnoses</h2>
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Add Diagnosis{% endblock %}
+
+{% block sidebar %} <a href="{% url 'doctor_dashboard' %}">Dashboard</a> <a href="{% url 'patients:patient_list' %}">Patients</a> <a href="{% url 'consultations:consultation_list' %}" class="active">Consultations</a>
+{% endblock %}
+
+{% block content %} 
+
+<div class="chart-card">
+
+<h3>🧠 Add Diagnosis</h3>
 
 <p><strong>Visit:</strong> {{ consultation.visit_number }}</p>
 
+<hr>
+
 <form method="post">
-    {% csrf_token %}
-    {{ formset.management_form }}
 
-    <table>
-        {% for form in formset %}
-        <tr>
-            <td>{{ form.name }}</td>
-            <td>{{ form.description }}</td>
-            <td>Primary? {{ form.is_primary }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+{% csrf_token %}
 
-    <button type="submit">Save Diagnoses</button>
+<table class="report-table diagnosis-table">
+
+<thead>
+<tr>
+<th style="width:25%">Diagnosis</th>
+<th style="width:60%">Description</th>
+<th style="width:15%; text-align:center;">Primary</th>
+</tr>
+</thead>
+
+<tbody>
+
+{{ formset.management_form }}
+
+{% for form in formset %}
+
+<tr>
+
+<td>
+{{ form.name }}
+</td>
+
+<td>
+{{ form.description }}
+</td>
+
+<td style="text-align:center;">
+{{ form.is_primary }}
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+<br>
+
+<div style="margin-top:10px;">
+
+<button type="submit" class="btn btn-primary">
+💾 Save Diagnosis
+</button>
+
+<a href="{% url 'consultations:consultation_detail' consultation.pk %}" class="btn btn-consult">
+← Back to Consultation
+</a>
+
+</div>
+
 </form>
+
+</div>
+
+{% endblock %}
