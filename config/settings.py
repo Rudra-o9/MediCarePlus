@@ -149,7 +149,7 @@ AUTHENTICATION_BACKENDS = [
 
 LOGIN_REDIRECT_URL = "role_redirect"
 LOGOUT_REDIRECT_URL = "home"
-LOGIN_URL = "/accounts/login/"
+LOGIN_URL = "login"
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -177,3 +177,8 @@ else:
     SECURE_HSTS_SECONDS = 0
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
+
+
+
+
+LOGOUT_REDIRECT_URL = '/'

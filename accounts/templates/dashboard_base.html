@@ -29,9 +29,10 @@ MediCarePlus
 </div>
 
 <div class="sidebar-footer">
-<a href="{% url 'logout' %}" class="logout-btn">
-Logout
-</a>
+<form method="post" action="{% url 'logout' %}">
+{% csrf_token %}
+<button type="submit" class="logout-btn">Logout</button>
+</form>
 </div>
 </aside>
 
@@ -74,6 +75,15 @@ Welcome back, {{ user.full_name }}
 </header>
 
 <section class="content-area">
+{% if messages %}
+<div style="margin-bottom:20px;">
+{% for message in messages %}
+<div class="chart-card" style="padding:14px 18px;">
+{{ message }}
+</div>
+{% endfor %}
+</div>
+{% endif %}
 {% block content %}
 {% endblock %}
 </section>

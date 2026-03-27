@@ -3,19 +3,39 @@
 
 <div class="card">
     <span class="role-badge">
-        Approval Pending
+        {% if is_rejected %}Request Rejected{% else %}Approval Pending{% endif %}
     </span>
 
-    <h2>Verification in Progress</h2>
+    <h2>
+        {% if is_rejected %}Registration Decision Available{% else %}Verification in Progress{% endif %}
+    </h2>
 
+    {% if is_rejected %}
+    <p class="message-text">
+        Your registration request was rejected by the admin team.
+        {% if rejection_reason %}
+        Review the reason below and update your details before registering again.
+        {% else %}
+        Please contact the admin team for more details or register again with corrected information.
+        {% endif %}
+    </p>
+
+    {% if rejection_reason %}
+    <div class="auth-error" style="text-align:left;">
+        <strong>Reason:</strong> {{ rejection_reason }}
+    </div>
+    {% endif %}
+    {% else %}
     <p class="message-text">
         Your account is currently under review by our administration team.
         You will gain dashboard access once approved.
     </p>
+    {% endif %}
 
-    <a href="{% url 'logout' %}">
-        <button>Logout</button>
-    </a>
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+    </form>
 </div>
 
 {% endblock %}

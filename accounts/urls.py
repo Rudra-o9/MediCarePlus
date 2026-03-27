@@ -4,6 +4,7 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
 
+    path('register/', views.register_choice, name='register'),
     path('register/doctor/', views.doctor_register, name='doctor_register'),
     path('register/pharmacist/', views.pharmacist_register, name='pharmacist_register'),
 
@@ -11,7 +12,7 @@ urlpatterns = [
         template_name='registration/login.html'
     ), name='login'),
 
-    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    path('logout/', views.logout_view, name='logout'),
 
     path('redirect/', views.role_redirect, name='role_redirect'),
     path('pending/', views.pending_view, name='pending'),

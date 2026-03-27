@@ -59,6 +59,9 @@ class DoctorRegisterForm(UserCreationForm):
         user = super().save(commit=False)
         user.role = 'DOCTOR'
         user.is_approved = False
+        user.approval_status = "PENDING"
+        user.rejection_reason = ""
+        user.rejected_at = None
         if commit:
             user.save()
         return user
@@ -84,6 +87,9 @@ class PharmacistRegisterForm(UserCreationForm):
         user = super().save(commit=False)
         user.role = 'PHARMACIST'
         user.is_approved = False
+        user.approval_status = "PENDING"
+        user.rejection_reason = ""
+        user.rejected_at = None
         if commit:
             user.save()
         return user

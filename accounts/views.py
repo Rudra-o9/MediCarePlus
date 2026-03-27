@@ -18,6 +18,8 @@ from .forms import (
     SystemSettingForm,
 )
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
+from django.contrib import messages
 from patients.models import Patient
 from pharmacy.models import Batch, Medicine, Store, Supplier
 from .models import Area, City, SystemSetting
@@ -65,8 +67,9 @@ def doctor_register(request):
             user = form.save()
             if not settings_obj.doctor_approval_required:
                 user.is_approved = True
+                user.approval_status = "APPROVED"
                 user.approved_at = timezone.now()
-                user.save(update_fields=["is_approved", "approved_at"])
+                user.save(update_fields=["is_approved", "approval_status", "approved_at"])
 
             from core.models import Notification
 
@@ -100,8 +103,9 @@ def pharmacist_register(request):
             user = form.save()
             if not settings_obj.pharmacist_approval_required:
                 user.is_approved = True
+                user.approval_status = "APPROVED"
                 user.approved_at = timezone.now()
-                user.save(update_fields=["is_approved", "approved_at"])
+                user.save(update_fields=["is_approved", "approval_status", "approved_at"])
 
         from core.models import Notification
 
@@ -122,6 +126,9 @@ def role_redirect(request):
     """Send the user to the correct dashboard after login."""
     user = request.user
 
+    if user.approval_status == "REJECTED":
+        return redirect('pending')
+
     if not user.is_approved:
         return redirect('pending')
 
@@ -138,7 +145,11 @@ def role_redirect(request):
 
 @login_required
 def pending_view(request):
-    return render(request, 'accounts/pending.html')
+    context = {
+        "is_rejected": request.user.approval_status == "REJECTED",
+        "rejection_reason": request.user.rejection_reason,
+    }
+    return render(request, 'accounts/pending.html', context)
 
 @login_required
 def doctor_dashboard(request):
@@ -300,6 +311,9 @@ def home(request):
         #     return redirect('/admin/')
 
         # If not approved
+        if user.approval_status == "REJECTED":
+            return redirect('pending')
+
         if not user.is_approved:
             return redirect('pending')
 
@@ -311,6 +325,11 @@ def home(request):
             return redirect('pharmacist_dashboard')
 
     return render(request, 'accounts/home.html')
+
+
+def register_choice(request):
+    """Public role-selection page so registration works without dropdown UI."""
+    return render(request, "accounts/register_choice.html")
 
 def live_sales_data(request):
     """Small JSON endpoint used by dashboard widgets for live revenue refresh."""
@@ -761,7 +780,7 @@ def approve_doctors(request):
     if request.user.role != "ADMIN":
         raise PermissionDenied()
 
-    doctors = User.objects.filter(role="DOCTOR", is_approved=False)
+    doctors = User.objects.filter(role="DOCTOR", approval_status="PENDING")
 
     return render(request, "accounts/approve_doctors.html", {
         "doctors": doctors
@@ -775,7 +794,7 @@ def approve_pharmacists(request):
     if request.user.role != "ADMIN":
         raise PermissionDenied()
 
-    pharmacists = User.objects.filter(role="PHARMACIST", is_approved=False)
+    pharmacists = User.objects.filter(role="PHARMACIST", approval_status="PENDING")
 
     return render(request, "accounts/approve_pharmacists.html", {
         "pharmacists": pharmacists
@@ -807,9 +826,12 @@ def approve_user(request, user_id):
         return HttpResponse("Certificate document required.")
 
     user.is_approved = True
+    user.approval_status = "APPROVED"
+    user.rejection_reason = ""
+    user.rejected_at = None
     user.approved_by = request.user
     user.approved_at = timezone.now()
-    user.save()
+    user.save(update_fields=["is_approved", "approval_status", "rejection_reason", "rejected_at", "approved_by", "approved_at"])
     from core.models import Notification
 
     Notification.objects.create(
@@ -824,7 +846,10 @@ def approve_user(request, user_id):
         f"{user.full_name} ({user.role}) was approved by {request.user.full_name}"
     )
 
-    return redirect(request.META.get("HTTP_REFERER"))
+    messages.success(request, f"{user.full_name} was approved successfully.")
+
+    fallback_route = "approve_doctors" if user.role == "DOCTOR" else "approve_pharmacists"
+    return redirect(request.META.get("HTTP_REFERER") or fallback_route)
 
 @login_required
 def reject_user(request, user_id):
@@ -837,14 +862,35 @@ def reject_user(request, user_id):
         raise PermissionDenied()
 
     user = get_object_or_404(User, id=user_id)
+    rejection_reason = request.POST.get("rejection_reason", "").strip()
 
     log_activity(
         request.user,
         "USER_REJECTED",
         f"{user.full_name} ({user.role}) was rejected by {request.user.full_name}"
     )
+    user.is_approved = False
+    user.approval_status = "REJECTED"
+    user.rejection_reason = rejection_reason
+    user.rejected_at = timezone.now()
+    user.save(update_fields=["is_approved", "approval_status", "rejection_reason", "rejected_at"])
 
-    user.delete()
+    Notification.objects.create(
+        title="Registration Rejected",
+        message=f"{user.full_name}'s {user.role.lower()} registration was rejected by admin",
+        notification_type="WARNING"
+    )
 
-    return redirect(request.META.get("HTTP_REFERER"))
+    messages.warning(request, f"{user.full_name} was marked as rejected.")
 
+    fallback_route = "approve_doctors" if user.role == "DOCTOR" else "approve_pharmacists"
+    return redirect(request.META.get("HTTP_REFERER") or fallback_route)
+
+
+def logout_view(request):
+    """Log out the current user and return to the public landing page."""
+    if request.method != "POST":
+        raise PermissionDenied("Invalid request method.")
+
+    logout(request)
+    return redirect("home")
