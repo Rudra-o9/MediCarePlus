@@ -1,330 +1,468 @@
-/* RESET */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    height: 100vh;
-    overflow: hidden;
-    background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #0f2027);
-    background-size: 400% 400%;
-    animation: gradientShift 15s ease infinite;
+    margin: 0;
+    font-family: "Manrope", sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: linear-gradient(135deg, #0d2028 0%, #17323d 45%, #10262f 100%);
     color: white;
 }
 
-/* Background animation */
-@keyframes gradientShift {
-    0% {background-position: 0% 50%;}
-    50% {background-position: 100% 50%;}
-    100% {background-position: 0% 50%;}
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(41, 211, 145, 0.72) rgba(255, 255, 255, 0.04);
 }
 
-/* NAVBAR */
+*::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+
+*::-webkit-scrollbar-track {
+    background: linear-gradient(180deg, rgba(7, 24, 31, 0.96), rgba(11, 35, 44, 0.9));
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(8, 23, 30, 0.55);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #20d08e 0%, #24c1b7 52%, #2396f3 100%);
+    border-radius: 999px;
+    border: 3px solid rgba(6, 19, 26, 0.94);
+    box-shadow: 0 0 18px rgba(39, 182, 214, 0.24);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #34f5a2 0%, #3fd7cc 52%, #45a7ff 100%);
+    box-shadow: 0 0 20px rgba(52, 245, 162, 0.30);
+}
+
+*::-webkit-scrollbar-button:single-button {
+    display: block;
+    height: 14px;
+    background: linear-gradient(180deg, rgba(11, 35, 44, 0.96), rgba(8, 23, 30, 0.96));
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+*::-webkit-scrollbar-button:single-button:hover {
+    background: linear-gradient(180deg, rgba(17, 57, 69, 0.96), rgba(10, 31, 39, 0.96));
+}
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+body::before {
+    width: 420px;
+    height: 420px;
+    top: -140px;
+    right: -120px;
+    background: radial-gradient(circle, rgba(24, 191, 115, 0.18), transparent 65%);
+}
+
+body::after {
+    width: 480px;
+    height: 480px;
+    bottom: -180px;
+    left: -140px;
+    background: radial-gradient(circle, rgba(31, 146, 255, 0.16), transparent 65%);
+}
+
 .navbar {
+    position: relative;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 30px 80px;
-    position: relative;
-    z-index: 1000;
+    padding: 30px 56px 10px;
 }
 
 .logo {
-    font-size: 22px;
-    font-weight: 600;
+    font-family: "Sora", sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -0.05em;
 }
 
 .nav-buttons {
     display: flex;
-    gap: 20px;
+    align-items: center;
+    gap: 14px;
 }
 
-/* BUTTONS */
 .btn {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    text-decoration: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
+    padding: 12px 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 800;
     border: none;
-    transition: all 0.25s ease;
-}
-
-.btn-primary {
-    background: #2c7be5;
-    color: white;
-}
-
-.btn-success {
-    background: #28a745;
-    color: white;
-}
-
-.btn-edit {
-    background: #ffc107;
-    color: black;
-}
-
-.btn-delete {
-    background: #dc3545;
-    color: white;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.25);
 }
 
-/* DROPDOWN */
+.btn-primary {
+    color: white;
+    background: linear-gradient(135deg, #1f92ff, #2563eb);
+    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.22);
+}
+
+.btn-success {
+    color: white;
+    background: linear-gradient(135deg, #18bf73, #16a34a);
+    box-shadow: 0 14px 30px rgba(22, 163, 74, 0.24);
+}
+
 .dropdown {
     position: relative;
 }
 
 .dropdown-menu {
     position: absolute;
-    top: 120%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(20px);
-    border-radius: 12px;
-    padding: 8px 0;
-    min-width: 170px;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 220px;
+    padding: 10px;
+    border-radius: 20px;
+    background: rgba(9, 28, 36, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 55px rgba(0, 0, 0, 0.30);
     opacity: 0;
     visibility: hidden;
-    transition: 0.3s ease;
-    z-index: 2000;
+    transform: translateY(-6px);
+    transition: all 0.22s ease;
 }
 
 .dropdown:hover .dropdown-menu {
     opacity: 1;
     visibility: visible;
+    transform: translateY(0);
 }
 
 .dropdown-menu a {
     display: block;
-    padding: 10px 20px;
-    color: white;
+    padding: 12px 14px;
+    border-radius: 14px;
+    color: #ecfeff;
     text-decoration: none;
+    font-weight: 700;
 }
 
 .dropdown-menu a:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.06);
 }
 
-/* HERO */
 .hero {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 80vh;
-    padding: 0 80px;
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: start;
+    gap: 36px;
+    min-height: calc(100vh - 110px);
+    padding: 36px 56px 56px;
 }
 
-.hero-left {
-    max-width: 600px;
+.hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    margin-bottom: 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #d6f6ff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
 
 .hero-left h1 {
-    font-size: 60px;
-    line-height: 1.2;
+    font-family: "Sora", sans-serif;
+    font-size: clamp(3rem, 6vw, 5.8rem);
+    line-height: 0.98;
+    letter-spacing: -0.08em;
+    max-width: 760px;
 }
 
 .hero-left span {
-    background: linear-gradient(90deg, #00f5a0, #00d9f5);
+    background: linear-gradient(135deg, #15f0a4, #6ee7ff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
 .hero-left p {
-    margin-top: 20px;
-    font-size: 18px;
-    opacity: 0.8;
+    margin-top: 24px;
+    max-width: 700px;
+    color: #c7e4ec;
+    font-size: 1.08rem;
+    line-height: 1.8;
 }
 
-/* GLASS CARD */
+.hero-highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.highlight-pill {
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f0feff;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.hero-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 28px;
+    max-width: 930px;
+}
+
+.feature-card {
+    padding: 20px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(14px);
+}
+
+.feature-label,
+.metric-label,
+.floating-label {
+    display: inline-block;
+    color: #8debd4;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.feature-card h3 {
+    margin: 8px 0 10px;
+    font-family: "Sora", sans-serif;
+    font-size: 1.15rem;
+    letter-spacing: -0.04em;
+}
+
+.feature-card p {
+    margin-top: 0;
+    color: #c7e4ec;
+    font-size: 0.96rem;
+    line-height: 1.75;
+}
+
 .hero-right {
     display: flex;
     justify-content: center;
-    align-items: center;
+}
+
+.hero-stack {
+    position: relative;
+    width: min(100%, 470px);
 }
 
 .glass-card {
-    width: 350px;
-    padding: 40px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.08);
+    width: 100%;
+    padding: 34px;
+    border-radius: 34px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)), rgba(8, 23, 30, 0.76);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.30);
     backdrop-filter: blur(20px);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    animation: floatCard 6s ease-in-out infinite;
+    overflow: hidden;
+    position: relative;
 }
 
-@keyframes floatCard {
-    0%,100% {transform: translateY(0);}
-    50% {transform: translateY(-15px);}
+.glass-card::after {
+    content: "";
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    right: -70px;
+    top: -60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(119, 232, 255, 0.18), transparent 65%);
 }
 
-/* PARTICLES */
+.metric-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+.glass-card h2 {
+    position: relative;
+    z-index: 1;
+    font-family: "Sora", sans-serif;
+    font-size: 2rem;
+    line-height: 1.1;
+    letter-spacing: -0.06em;
+    margin-bottom: 16px;
+}
+
+.glass-card p {
+    position: relative;
+    z-index: 1;
+    color: #c7e4ec;
+    line-height: 1.8;
+}
+
+.pulse-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #31e89a;
+    box-shadow: 0 0 0 0 rgba(49, 232, 154, 0.55);
+    animation: pulseGlow 1.8s infinite;
+}
+
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(49, 232, 154, 0.50); }
+    70% { box-shadow: 0 0 0 12px rgba(49, 232, 154, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(49, 232, 154, 0); }
+}
+
+.status-list {
+    display: grid;
+    gap: 14px;
+    margin-top: 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.status-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.status-item strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.98rem;
+}
+
+.status-item small {
+    color: #c7e4ec;
+    line-height: 1.6;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    margin-top: 4px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-indicator.ok {
+    background: #31e89a;
+}
+
+.status-indicator.info {
+    background: #60c5ff;
+}
+
+.status-indicator.warn {
+    background: #f7c948;
+}
+
+.mini-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.mini-stat {
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: rgba(7, 27, 35, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.20);
+    backdrop-filter: blur(18px);
+}
+
+.mini-stat strong {
+    display: block;
+    margin-top: 6px;
+    font-family: "Sora", sans-serif;
+    font-size: 1rem;
+    letter-spacing: -0.03em;
+}
+
 .particles {
     position: fixed;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     pointer-events: none;
     z-index: 0;
 }
 
 .particle {
     position: absolute;
-    bottom: -20px;
-    width: 6px;
-    height: 6px;
-    background: rgba(255,255,255,0.3);
+    bottom: -18px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
     animation: rise linear infinite;
 }
 
 @keyframes rise {
-    from {transform: translateY(0); opacity:1;}
-    to {transform: translateY(-110vh); opacity:0;}
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-110vh); opacity: 0; }
 }
 
-/* ===============================
-   Patient Table Styling
-================================ */
+@media (max-width: 980px) {
+    .navbar {
+        padding: 22px 20px 6px;
+    }
 
-.table-modern {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
+    .hero {
+        grid-template-columns: 1fr;
+        padding: 10px 20px 36px;
+        min-height: auto;
+    }
+
+    .hero-left h1 {
+        font-size: clamp(2.6rem, 12vw, 4.3rem);
+    }
+
+    .hero-feature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-stack {
+        width: 100%;
+        margin-top: 12px;
+    }
+
+    .mini-stat-grid {
+        grid-template-columns: 1fr;
+    }
 }
-
-.table-modern thead {
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.table-modern th,
-.table-modern td {
-    padding: 12px;
-    text-align: left;
-}
-
-.table-modern tr {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    transition: 0.3s;
-}
-
-.table-modern tbody tr:hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-/* ===============================
-   Global Button System
-================================ */
-
-/* .btn {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    border: none;
-    transition: all 0.25s ease;
-}
-
-.btn-primary {
-    background: #2c7be5;
-    color: white;
-}
-
-.btn-success {
-    background: #28a745;
-    color: white;
-}
-
-.btn-edit {
-    background: #ffc107;
-    color: black;
-}
-
-.btn-delete {
-    background: #dc3545;
-    color: white;
-}
-
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.25);
-}
-
-/* Small spacing helper */
-/* .btn + .btn {
-    margin-left: 8px;
-} */ */
-
-
-/* ===============================
-   Card Hover Effect
-================================ */
-
-.dashboard-card {
-    transition: 0.3s;
-}
-
-.dashboard-card:hover {
-    transform: translateY(-5px);
-}
-
-/* Delete page button layout */
-
-.delete-actions {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.delete-actions .btn {
-    margin-right: 0;   /* override previous spacing */
-}
-
-/* ===============================
-   Delete Modal
-================================ */
-
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.6);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 999;
-}
-
-.modal-box {
-    background: rgba(40, 60, 70, 0.95);
-    padding: 25px;
-    border-radius: 15px;
-    width: 350px;
-    text-align: center;
-}
-
-.modal-actions {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-}
-

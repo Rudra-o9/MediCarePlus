@@ -6,141 +6,145 @@
 <a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
 <a href="{% url 'billing:prescription_queue' %}">Prescriptions</a>
 <a href="{% url 'billing:invoice_list' %}" class="active">Invoices</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'low_stock_medicines' %}">Low Stock</a>
+<a href="{% url 'near_expiry_batches' %}">Near Expiry</a>
+<a href="{% url 'expired_batches' %}">Expired</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
 {% endblock %}
 
 {% block content %}
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Visible Invoices</h4>
+        <p>{{ result_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Paid</h4>
+        <p>{{ paid_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Draft</h4>
+        <p>{{ draft_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total Value</h4>
+        <p>Rs. {{ invoice_total }}</p>
+    </div>
+</div>
+
+{% if no_store_assigned %}
+<div class="chart-card">
+    <div class="approval-empty-state">
+        <strong>No active store is assigned to this pharmacist account.</strong>
+        <p>Invoices are shown per assigned store. Ask an admin to map this pharmacist to an active store from Store Management so invoice and prescription data can appear here.</p>
+    </div>
+</div>
+{% endif %}
+
+<div class="chart-card sales-filter-card">
+    <div class="section-heading sales-heading">
+        <div>
+            <span class="section-kicker">Filters</span>
+            <h3>Refine Invoice Queue</h3>
+            <p>Search by patient, narrow by status, and jump quickly into draft collections or paid invoice history.</p>
+        </div>
+        {% if current_store %}
+        <div class="sales-scope-chip sales-scope-chip-compact">
+            <strong>{{ current_store.name }}</strong>
+            <span>{{ current_store.city.name }}{% if current_store.area %}, {{ current_store.area.name }}{% endif %}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <form method="get" class="sales-filter-form">
+        <div class="sales-filter-grid">
+            <div class="form-group">
+                <label>Search Patient</label>
+                <input type="text" name="q" placeholder="Patient name..." value="{{ search_query }}">
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status">
+                    <option value="">All Status</option>
+                    <option value="DRAFT" {% if active_status == "DRAFT" %}selected{% endif %}>Draft</option>
+                    <option value="PAID" {% if active_status == "PAID" %}selected{% endif %}>Paid</option>
+                </select>
+            </div>
+        </div>
+        <div class="sales-filter-actions">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
 
 <div class="chart-card">
+    <div class="section-heading sales-heading">
+        <div>
+            <span class="section-kicker">Invoices</span>
+            <h3>Invoice Queue</h3>
+            <p>Review invoice status, total amount, and payment actions in one cleaner billing workspace.</p>
+        </div>
+    </div>
 
-<h3>Invoices</h3>
-
-<!-- ================= FILTER BAR ================= -->
-
-<form method="get" style="margin-bottom:20px; display:flex; gap:10px;">
-
-<input 
-type="text" 
-name="q" 
-placeholder="Search patient..." 
-value="{{ request.GET.q }}"
-style="padding:8px 12px;border-radius:8px;border:none;"
->
-
-<select 
-name="status"
-style="padding:8px 12px;border-radius:8px;border:none;"
->
-
-<option value="">All Status</option>
-
-<option value="DRAFT"
-{% if request.GET.status == "DRAFT" %}selected{% endif %}
->
-Draft
-</option>
-
-<option value="PAID"
-{% if request.GET.status == "PAID" %}selected{% endif %}
->
-Paid
-</option>
-
-</select>
-
-<button type="submit" class="btn-primary">
-Filter
-</button>
-
-</form>
-
-
-<!-- ================= INVOICE TABLE ================= -->
-
-<table class="report-table">
-
-<thead>
-<tr>
-<th>Invoice No</th>
-<th>Patient</th>
-<th>Status</th>
-<th style="text-align:right;">Total</th>
-<th>Date</th>
-<th>Actions</th>
-</tr>
-</thead>
-
-<tbody>
-
-{% for inv in invoices %}
-
-<tr>
-
-<td>
-<a href="{% url 'billing:invoice_detail' inv.pk %}">
-{{ inv.invoice_number }}
-</a>
-</td>
-
-<td>
-{{ inv.prescription.consultation.patient.full_name }}
-</td>
-
-<td>
-
-{% if inv.status == "PAID" %}
-
-<span class="status-paid">PAID</span>
-
-{% else %}
-
-<span class="status-draft">DRAFT</span>
-
-{% endif %}
-
-</td>
-
-<td style="text-align:right;">
-₹ {{ inv.total_amount }}
-</td>
-
-<td>
-{{ inv.created_at|date:"d M Y" }}
-</td>
-
-<td>
-
-<div class="table-actions">
-
-<a href="{% url 'billing:invoice_detail' inv.pk %}" class="btn-view">
-View
-</a>
-
-{% if inv.status != "PAID" %}
-
-<a href="{% url 'billing:add_payment' inv.pk %}" class="btn-pay">
-Pay
-</a>
-
-{% endif %}
-
+    <div class="sales-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Invoice No</th>
+                    <th>Patient</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td>
+                        <div class="sales-medicine-cell">
+                            <strong><a href="{% url 'billing:invoice_detail' inv.pk %}">{{ inv.invoice_number }}</a></strong>
+                            <small>{% if inv.prescription.routing_status %}{{ inv.prescription.routing_status|title }} routing{% else %}Store invoice{% endif %}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="sales-medicine-cell">
+                            <strong>{{ inv.prescription.consultation.patient.full_name }}</strong>
+                            <small>{{ inv.prescription.consultation.doctor.full_name }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        {% if inv.status == "PAID" %}
+                        <span class="status-paid">Paid</span>
+                        {% else %}
+                        <span class="status-draft">Draft</span>
+                        {% endif %}
+                    </td>
+                    <td>Rs. {{ inv.total_amount }}</td>
+                    <td>{{ inv.created_at|date:"d M Y" }}</td>
+                    <td>
+                        <div class="approval-action-row">
+                            <a href="{% url 'billing:invoice_detail' inv.pk %}" class="btn btn-secondary">View</a>
+                            {% if inv.status != "PAID" %}
+                            <a href="{% url 'billing:add_payment' inv.pk %}" class="btn btn-success">Pay</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No invoices found for the current filters.</strong>
+                            <p>Try clearing the search or switching the status filter to broaden the queue.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-
-</td>
-
-</tr>
-
-{% empty %}
-
-<tr>
-<td colspan="6">No invoices found</td>
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
-
-</div>
-
 {% endblock %}

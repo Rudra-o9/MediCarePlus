@@ -8,6 +8,12 @@ urlpatterns = [
 
     # MEDICINE INVENTORY
     path("medicines/", views.medicine_list, name="medicine_list"),
+    path("manage/categories/", views.manage_categories, name="manage_categories"),
+    path("manage/categories/<int:pk>/edit/", views.edit_category, name="edit_category"),
+    path("manage/suppliers/", views.manage_suppliers, name="manage_suppliers"),
+    path("manage/suppliers/<int:pk>/edit/", views.edit_supplier, name="edit_supplier"),
+    path("manage/medicines/", views.manage_medicines, name="manage_medicines"),
+    path("manage/medicines/<int:pk>/edit/", views.edit_medicine, name="edit_medicine"),
     path("low-stock/", views.low_stock_medicines, name="low_stock_medicines"),
     path("near-expiry/", views.near_expiry_batches, name="near_expiry_batches"),
     path("expired-batches/", views.expired_batches, name="expired_batches"),

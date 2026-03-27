@@ -1,26 +1,34 @@
-from django.test import TransactionTestCase
-from django.utils import timezone
 from decimal import Decimal
 from threading import Thread
 
-from accounts.models import CustomUser, City
-from patients.models import Patient
-from consultations.models import Consultation, Prescription, PrescriptionItem
-from pharmacy.models import Medicine, Batch
+from django.test import TransactionTestCase
+from django.utils import timezone
+
+from accounts.models import Area, City, CustomUser
 from billing.models import Invoice, InvoiceItem, Payment
 from billing.services.invoice_service import InvoiceService
+from consultations.models import Consultation, Prescription, PrescriptionItem
+from patients.models import Patient
+from pharmacy.models import Batch, Medicine, MedicineCategory, Store, Supplier
 
 
 class ConcurrencyTestCase(TransactionTestCase):
     reset_sequences = True
 
     def setUp(self):
-        self.city = City.objects.create(
-            name="Surat",
-            state="Gujarat",
-            country="India"
-        )
+        self.city = City.objects.create(name="Surat", state="Gujarat", country="India")
+        self.area = Area.objects.create(city=self.city, name="Adajan")
 
+        self.doctor = CustomUser.objects.create_user(
+            email="doctor@test.com",
+            password="pass123",
+            role="DOCTOR",
+            full_name="Doctor",
+            phone="9999999998",
+            city=self.city,
+            area=self.area,
+            is_approved=True
+        )
         self.pharmacist = CustomUser.objects.create_user(
             email="pharma@test.com",
             password="pass123",
@@ -28,8 +36,12 @@ class ConcurrencyTestCase(TransactionTestCase):
             full_name="Pharma",
             phone="9999999999",
             city=self.city,
+            area=self.area,
             is_approved=True
         )
+
+        self.store = Store.objects.create(name="Adajan Store", city=self.city, area=self.area)
+        self.store.staff.add(self.pharmacist)
 
         self.patient = Patient.objects.create(
             full_name="Test Patient",
@@ -37,24 +49,29 @@ class ConcurrencyTestCase(TransactionTestCase):
             gender="MALE",
             phone="7777777777",
             city=self.city,
-            created_by=self.pharmacist
+            area=self.area,
+            created_by=self.doctor
         )
 
-        self.consultation = Consultation.objects.create(
-            patient=self.patient,
-            doctor=self.pharmacist
-        )
-
+        self.consultation = Consultation.objects.create(patient=self.patient, doctor=self.doctor)
         self.prescription = Prescription.objects.create(
-            consultation=self.consultation
+            consultation=self.consultation,
+            assigned_store=self.store,
+            routing_status="SENT"
         )
 
+        self.category = MedicineCategory.objects.create(name="General")
+        self.supplier = Supplier.objects.create(name="Supplier", phone="1234567890")
         self.medicine = Medicine.objects.create(
             name="Paracetamol",
-            price=Decimal("10.00")
+            category=self.category,
+            default_selling_price=Decimal("10.00"),
+            gst_percentage=Decimal("0.00")
         )
 
         self.batch = Batch.objects.create(
+            store=self.store,
+            supplier=self.supplier,
             medicine=self.medicine,
             batch_number="B1",
             expiry_date=timezone.now().date() + timezone.timedelta(days=30),
@@ -100,11 +117,9 @@ class ConcurrencyTestCase(TransactionTestCase):
 
         t1.start()
         t2.start()
-
         t1.join()
         t2.join()
 
         self.batch.refresh_from_db()
 
-        # Stock should be deducted only once
         self.assertEqual(self.batch.quantity, 0)

@@ -6,80 +6,121 @@
 <a href="{% url 'admin_dashboard' %}">Dashboard</a>
 <a href="{% url 'approve_doctors' %}">Approve Doctors</a>
 <a href="{% url 'approve_pharmacists' %}" class="active">Approve Pharmacists</a>
+<a href="{% url 'store_management' %}">Stores</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'manage_categories' %}">Categories</a>
+<a href="{% url 'manage_suppliers' %}">Suppliers</a>
+<a href="{% url 'manage_medicines' %}">Medicines</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+<a href="{% url 'expiry_report' %}">Expiry Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
+<a href="{% url 'billing:medicine_profit_report' %}">Profit Report</a>
+<a href="{% url 'billing:gst_summary_report' %}">GST Report</a>
 {% endblock %}
 
 {% block content %}
+<section class="approval-hero">
+    <div class="approval-hero-copy">
+        <span class="section-kicker">Pharmacist Review</span>
+        <h3>Pending Pharmacist Approvals</h3>
+        <p>Validate pharmacist registrations, confirm credentials, and approve only complete applications.</p>
+    </div>
 
-<div class="dashboard-card">
+    <div class="approval-hero-stats">
+        <div class="approval-stat-card">
+            <span class="approval-stat-label">Pending Pharmacists</span>
+            <strong>{{ pharmacists|length }}</strong>
+        </div>
+        <div class="approval-stat-card">
+            <span class="approval-stat-label">Required Checks</span>
+            <strong>License + Certificate</strong>
+        </div>
+    </div>
+</section>
 
-<h3>Pending Pharmacist Approvals</h3>
+<div class="chart-card approval-table-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Queue</span>
+            <h3>Pharmacist Approval Queue</h3>
+            <p>Check registration details, verify documents, and complete the approval decision from one place.</p>
+        </div>
+    </div>
 
-<table class="report-table">
+    <div class="approval-table-wrap">
+        <table class="report-table approval-table">
+            <thead>
+                <tr>
+                    <th>Pharmacist</th>
+                    <th>Contact</th>
+                    <th>Location</th>
+                    <th>License</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pharmacist in pharmacists %}
+                <tr>
+                    <td>
+                        <div class="approval-person-cell">
+                            <strong>{{ pharmacist.full_name }}</strong>
+                            <span>Pharmacist Registration</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="approval-meta-stack">
+                            <span>{{ pharmacist.email }}</span>
+                            <small>{{ pharmacist.phone }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="approval-chip">{{ pharmacist.city|default:"Location not set" }}</span>
+                    </td>
+                    <td>
+                        <span class="approval-license">{{ pharmacist.license_number|default:"License missing" }}</span>
+                    </td>
+                    <td>
+                        <span class="status-pending approval-status-badge">Pending Review</span>
+                    </td>
+                    <td>
+                        <div class="approval-actions">
+                            {% if pharmacist.certificate %}
+                            <a href="{{ pharmacist.certificate.url }}" target="_blank" class="approval-link-btn">
+                                View Certificate
+                            </a>
+                            {% else %}
+                            <span class="approval-missing">Certificate missing</span>
+                            {% endif %}
 
-<thead>
-<tr>
-<th>Name</th>
-<th>Email</th>
-<th>Phone</th>
-<th>City</th>
-<th>License</th>
-<th>Status</th>
-<th>Action</th>
-</tr>
-</thead>
+                            <div class="approval-action-row">
+                                <form method="post" action="{% url 'approve_user' pharmacist.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="approve-btn">Approve</button>
+                                </form>
 
-<tbody>
-
-{% for pharmacist in pharmacists %}
-
-<tr>
-<td>{{ pharmacist.full_name }}</td>
-<td>{{ pharmacist.email }}</td>
-<td>{{ pharmacist.phone }}</td>
-<td>{{ pharmacist.city }}</td>
-<td>{{ pharmacist.license_number }}</td>
-<td>
-<span class="status-pending">Pending</span>
-</td>
-
-<td>
-{% if pharmacist.certificate %}
-<a href="{{ pharmacist.certificate.url }}" target="_blank" class="view-btn">
-View Certificate
-</a>
-{% else %}
-No Certificate
-{% endif %}
-
-<form method="post" action="{% url 'approve_user' pharmacist.id %}" style="display:inline;">
-{% csrf_token %}
-<button type="submit" class="approve-btn">
-Approve
-</button>
-</form>
-
-<form method="post" action="{% url 'reject_user' pharmacist.id %}">
-{% csrf_token %}
-<button type="submit" class="reject-btn">
-Reject
-</button>
-</form>
-
-</td>
-</tr>
-
-{% empty %}
-
-<tr>
-<td colspan="7">No pharmacists waiting for approval.</td>
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
-
+                                <form method="post" action="{% url 'reject_user' pharmacist.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="reject-btn">Reject</button>
+                                </form>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No pharmacists are waiting for approval.</strong>
+                            <p>New pharmacist requests will appear here when they complete registration.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-
 {% endblock %}

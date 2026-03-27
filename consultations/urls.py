@@ -5,6 +5,7 @@ from .views import (
     AddDiagnosisView,
     AddPrescriptionView,
     consultation_list,
+    route_prescription,
     start_consultation
 )
 
@@ -23,4 +24,6 @@ urlpatterns = [
     path('<int:pk>/add-diagnosis/', AddDiagnosisView.as_view(), name='add_diagnosis'),
 
     path('<int:pk>/add-prescription/', AddPrescriptionView.as_view(), name='add_prescription'),
+
+    path('prescription/<int:prescription_id>/route/', route_prescription, name='route_prescription'),
 ]

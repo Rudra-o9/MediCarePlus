@@ -3,6 +3,7 @@ from . import views
 from .views import (
     PharmacistDashboardView,
     add_payment,
+    gst_summary_report_view,
     invoice_detail,
     invoice_list,
     medicine_profit_report_view,
@@ -33,6 +34,8 @@ urlpatterns = [
     path("reports/sales/", views.sales_report_view, name="sales_report"),
 
     path("reports/profit/", medicine_profit_report_view, name="medicine_profit_report"),
+
+    path("reports/gst-summary/", gst_summary_report_view, name="gst_summary_report"),
 
     path("reports/profit-trend/", profit_trend_view, name="profit_trend"),
 ]

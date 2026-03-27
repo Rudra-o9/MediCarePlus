@@ -1,35 +1,107 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Medicine Catalog{% endblock %}
+
+{% block sidebar %}
+{% if user.role == "ADMIN" %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'store_management' %}">Stores</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'manage_categories' %}">Categories</a>
+<a href="{% url 'manage_suppliers' %}">Suppliers</a>
+<a href="{% url 'medicine_list' %}" class="active">Medicines</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+<a href="{% url 'expiry_report' %}">Expiry Report</a>
+{% else %}
+<a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
+<a href="{% url 'medicine_list' %}" class="active">Medicines</a>
+<a href="{% url 'low_stock_medicines' %}">Low Stock</a>
+<a href="{% url 'near_expiry_batches' %}">Near Expiry</a>
+<a href="{% url 'expired_batches' %}">Expired</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+{% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>All Medicines</h2>
-    <hr>
+<div class="medicine-summary-grid">
+    <div class="summary-card">
+        <h4>Total Medicines</h4>
+        <p>{{ medicine_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Active Medicines</h4>
+        <p>{{ active_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Low Stock Lines</h4>
+        <p>{{ low_stock_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Catalog Mode</h4>
+        <p>{% if user.role == "ADMIN" %}Master Data{% else %}Store View{% endif %}</p>
+    </div>
+</div>
 
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Stock</th>
-                <th>Price</th>
-                <th>Low Stock?</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for medicine in medicines %}
-            <tr>
-                <td>{{ medicine.name }}</td>
-                <td>{{ medicine.stock_quantity }}</td>
-                <td>{{ medicine.price }}</td>
-                <td>
-                    {% if medicine.is_low_stock %}
-                        ⚠ Yes
-                    {% else %}
-                        No
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="chart-card">
+    <div class="section-heading medicine-heading">
+        <div>
+            <span class="section-kicker">Catalog</span>
+            <h3>Medicine Directory</h3>
+            <p>Browse the medicine master list with pricing, GST, stock visibility, and threshold context in one place.</p>
+        </div>
+    </div>
+
+    <div class="medicine-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Manufacturer</th>
+                    <th>Stock</th>
+                    <th>Price</th>
+                    <th>GST %</th>
+                    <th>Threshold</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for medicine in medicines %}
+                <tr>
+                    <td>
+                        <div class="medicine-name-cell">
+                            <strong>{{ medicine.name }}</strong>
+                            <small>{{ medicine.description|default:"No description added yet."|truncatechars:72 }}</small>
+                        </div>
+                    </td>
+                    <td>{{ medicine.category.name }}</td>
+                    <td>{{ medicine.manufacturer|default:"-" }}</td>
+                    <td>{{ medicine.stock_quantity }}</td>
+                    <td>Rs. {{ medicine.default_selling_price }}</td>
+                    <td>{{ medicine.gst_percentage }}</td>
+                    <td>{{ medicine.low_stock_threshold }}</td>
+                    <td>
+                        {% if not medicine.is_active %}
+                        <span class="status-draft">Inactive</span>
+                        {% elif medicine.is_low_stock %}
+                        <span class="status-low">Low Stock</span>
+                        {% else %}
+                        <span class="status-paid">Healthy</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No medicines have been added yet.</strong>
+                            <p>Create medicines from the admin medicine management page to populate the catalog.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

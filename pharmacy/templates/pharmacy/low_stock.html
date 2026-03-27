@@ -6,68 +6,85 @@
 <a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
 <a href="{% url 'billing:prescription_queue' %}">Prescriptions</a>
 <a href="{% url 'billing:invoice_list' %}">Invoices</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
 <a href="{% url 'low_stock_medicines' %}" class="active">Low Stock</a>
+<a href="{% url 'near_expiry_batches' %}">Near Expiry</a>
+<a href="{% url 'expired_batches' %}">Expired</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
 {% endblock %}
 
 {% block content %}
-
-<div class="chart-card">
-
-<h3>Low Stock Medicines</h3>
-
-<table class="report-table">
-
-<thead>
-<tr>
-<th>Medicine</th>
-<th>Current Stock</th>
-<th>Threshold</th>
-<th>Status</th>
-</tr>
-</thead>
-
-<tbody>
-
-{% for med in medicines %}
-
-<tr>
-
-<td>{{ med.name }}</td>
-
-<td>{{ med.total_stock }}</td>
-
-<td>{{ med.low_stock_threshold }}</td>
-
-<td>
-
-{% if med.total_stock == 0 %}
-
-<span class="status-critical">OUT OF STOCK</span>
-
-{% else %}
-
-<span class="status-low">LOW STOCK</span>
-
-{% endif %}
-
-</td>
-
-</tr>
-
-{% empty %}
-
-<tr>
-<td colspan="4" style="text-align:center;">
-No low stock medicines 🎉
-</td>
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
-
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Low Stock Medicines</h4>
+        <p>{{ low_stock_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Out of Stock</h4>
+        <p>{{ out_of_stock_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Review Goal</h4>
+        <p>Replenishment</p>
+    </div>
+    <div class="summary-card">
+        <h4>Page Mode</h4>
+        <p>Pharmacist Watch</p>
+    </div>
 </div>
 
+<div class="chart-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Inventory Watch</span>
+            <h3>Low Stock Medicines</h3>
+            <p>Track medicines that are at or below their configured threshold so you can trigger replenishment before dispensing slows down.</p>
+        </div>
+    </div>
+
+    <div class="sales-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Current Stock</th>
+                    <th>Threshold</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for med in medicines %}
+                <tr>
+                    <td>
+                        <div class="sales-medicine-cell">
+                            <strong>{{ med.name }}</strong>
+                            <small>{% if med.manufacturer %}{{ med.manufacturer }}{% else %}No manufacturer listed{% endif %}</small>
+                        </div>
+                    </td>
+                    <td>{{ med.stock_quantity }}</td>
+                    <td>{{ med.low_stock_threshold }}</td>
+                    <td>{% if med.category %}{{ med.category.name }}{% else %}-{% endif %}</td>
+                    <td>
+                        {% if med.stock_quantity == 0 %}
+                        <span class="status-critical">Out of Stock</span>
+                        {% else %}
+                        <span class="status-low">Low Stock</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No low stock medicines right now.</strong>
+                            <p>Your monitored medicines are currently above their low-stock thresholds.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

@@ -1,9 +1,18 @@
+"""Patient records and their location-aware demographic details."""
+
 from django.db import models
 from django.conf import settings
-from accounts.models import City
+from accounts.models import Area, City
 
 
 class Patient(models.Model):
+    """Central patient master record.
+
+    Faculty explanation:
+- doctors/pharmacists can create patient records,
+- consultations and prescription history hang off this model,
+- city/area help match prescriptions with nearby pharmacy stores.
+    """
 
     GENDER_CHOICES = (
         ('MALE', 'Male'),
@@ -18,6 +27,13 @@ class Patient(models.Model):
 
     city = models.ForeignKey(
         City,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="patients"
+    )
+    area = models.ForeignKey(
+        Area,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

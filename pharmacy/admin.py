@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Medicine, Batch, StockMovement, Supplier, MedicineCategory
+from .models import Batch, Medicine, MedicineCategory, StockMovement, Store, Supplier
 
 
 # =========================
@@ -35,14 +35,15 @@ class MedicineAdmin(admin.ModelAdmin):
 @admin.register(Batch)
 class BatchAdmin(admin.ModelAdmin):
     list_display = (
+        "store",
         "medicine",
         "supplier",
         "batch_number",
         "expiry_date",
         "quantity",
     )
-    list_filter = ("supplier", "expiry_date")
-    search_fields = ("medicine__name", "batch_number")
+    list_filter = ("store", "supplier", "expiry_date")
+    search_fields = ("medicine__name", "batch_number", "store__name")
 
 
 # =========================
@@ -51,6 +52,7 @@ class BatchAdmin(admin.ModelAdmin):
 @admin.register(StockMovement)
 class StockMovementAdmin(admin.ModelAdmin):
     list_display = (
+        "store",
         "medicine",
         "movement_type",
         "quantity",
@@ -59,8 +61,8 @@ class StockMovementAdmin(admin.ModelAdmin):
         "performed_by",
         "created_at",
     )
-    list_filter = ("movement_type", "created_at")
-    search_fields = ("medicine__name", "reference")
+    list_filter = ("store", "movement_type", "created_at")
+    search_fields = ("medicine__name", "reference", "store__name")
     readonly_fields = ("created_at",)
     ordering = ("-created_at",)
 
@@ -87,3 +89,11 @@ class SupplierAdmin(admin.ModelAdmin):
 class MedicineCategoryAdmin(admin.ModelAdmin):
     list_display = ("name",)
     search_fields = ("name",)
+
+
+@admin.register(Store)
+class StoreAdmin(admin.ModelAdmin):
+    list_display = ("name", "city", "area", "phone", "is_active")
+    list_filter = ("city", "area", "is_active")
+    search_fields = ("name", "city__name", "area__name")
+    filter_horizontal = ("staff",)

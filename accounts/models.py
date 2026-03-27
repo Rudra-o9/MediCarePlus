@@ -1,3 +1,11 @@
+"""Authentication and location models used across the whole project.
+
+Feature map:
+- `City` and `Area` define where users, patients, and stores belong.
+- `CustomUser` stores the role system for Admin, Doctor, and Pharmacist.
+- Approval fields support the real-world admin verification workflow.
+"""
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
@@ -7,6 +15,7 @@ from django.utils import timezone
 # City Model (Advanced)
 # =========================
 class City(models.Model):
+    """Top-level location used to group users, patients, and pharmacy stores."""
     name = models.CharField(max_length=150)
     state = models.CharField(max_length=150)
     country = models.CharField(max_length=150)
@@ -23,10 +32,35 @@ class City(models.Model):
         return f"{self.name}, {self.state}, {self.country}"
 
 
+class Area(models.Model):
+    """Smaller locality inside a city.
+
+    This is used for nearby-store matching so doctors can route prescriptions
+    to pharmacists in the patient's practical buying area.
+    """
+    city = models.ForeignKey(
+        City,
+        on_delete=models.CASCADE,
+        related_name="areas"
+    )
+    name = models.CharField(max_length=150)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["city__name", "name"]
+        unique_together = ("city", "name")
+
+    def __str__(self):
+        return f"{self.name}, {self.city.name}"
+
+
 # =========================
 # Custom User Manager
 # =========================
 class CustomUserManager(BaseUserManager):
+    """Custom manager because login is email-based instead of username-based."""
     def create_user(self, email, password=None, role='DOCTOR', **extra_fields):
         if not email:
             raise ValueError("Users must have an email address")
@@ -50,6 +84,13 @@ class CustomUserManager(BaseUserManager):
 # Custom User Model
 # =========================
 class CustomUser(AbstractBaseUser, PermissionsMixin):
+    """Single user model for all system roles.
+
+    Faculty explanation:
+- `role` drives role-based dashboards and access checks.
+- `city` and `area` support location-aware doctor/pharmacist/store workflows.
+- `is_approved`, `approved_by`, and `approved_at` support admin-controlled onboarding.
+    """
 
     ROLE_CHOICES = (
         ('ADMIN', 'Admin'),
@@ -62,6 +103,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     city = models.ForeignKey(
         City,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users"
+    )
+    area = models.ForeignKey(
+        Area,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -97,3 +145,31 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class SystemSetting(models.Model):
+    """Singleton-like admin configuration for security and operations policy.
+
+    This lets the project expose system settings through the app UI instead of
+    keeping every policy decision hidden in code.
+    """
+
+    allow_doctor_self_registration = models.BooleanField(default=True)
+    allow_pharmacist_self_registration = models.BooleanField(default=True)
+    doctor_approval_required = models.BooleanField(default=True)
+    pharmacist_approval_required = models.BooleanField(default=True)
+    expiry_alert_days = models.PositiveIntegerField(default=30)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "System Setting"
+        verbose_name_plural = "System Settings"
+
+    def __str__(self):
+        return "MediCarePlus System Settings"
+
+    @classmethod
+    def get_solo(cls):
+        """Return the one settings row used across the application."""
+        settings_obj, _ = cls.objects.get_or_create(pk=1)
+        return settings_obj

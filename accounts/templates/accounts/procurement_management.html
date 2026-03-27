@@ -1,0 +1,81 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Procurement{% endblock %}
+
+{% block sidebar %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'approve_doctors' %}">Approve Doctors</a>
+<a href="{% url 'approve_pharmacists' %}">Approve Pharmacists</a>
+<a href="{% url 'store_management' %}">Stores</a>
+<a href="{% url 'procurement_management' %}" class="active">Procurement</a>
+<a href="{% url 'manage_categories' %}">Categories</a>
+<a href="{% url 'manage_suppliers' %}">Suppliers</a>
+<a href="{% url 'manage_medicines' %}">Medicines</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+<a href="{% url 'expiry_report' %}">Expiry Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
+<a href="{% url 'billing:medicine_profit_report' %}">Profit Report</a>
+<a href="{% url 'billing:gst_summary_report' %}">GST Report</a>
+{% endblock %}
+
+{% block content %}
+<div class="chart-card form-card">
+<h3>Procure Batch</h3>
+<form method="post" class="patient-form">
+{% csrf_token %}
+{% if form.non_field_errors %}
+<div class="form-errors">
+{% for error in form.non_field_errors %}
+<small>{{ error }}</small>
+{% endfor %}
+</div>
+{% endif %}
+<div class="form-grid">
+{% for field in form %}
+<div class="form-group">
+<label>{{ field.label }}</label>
+{{ field }}
+{% if field.errors %}
+<small>{{ field.errors|join:", " }}</small>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+<button type="submit" class="btn btn-primary">Add Batch</button>
+</form>
+</div>
+
+<div class="chart-card">
+<h3>Recent Procurement</h3>
+<table class="report-table">
+<thead>
+<tr>
+<th>Store</th>
+<th>Medicine</th>
+<th>Batch</th>
+<th>Supplier</th>
+<th>Qty</th>
+<th>Expiry</th>
+</tr>
+</thead>
+<tbody>
+{% for batch in recent_batches %}
+<tr>
+<td>{{ batch.store.name }}</td>
+<td>{{ batch.medicine.name }}</td>
+<td>{{ batch.batch_number }}</td>
+<td>{{ batch.supplier.name }}</td>
+<td>{{ batch.quantity }}</td>
+<td>{{ batch.expiry_date }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="6">No procurement entries yet.</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

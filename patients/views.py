@@ -1,3 +1,5 @@
+"""Patient CRUD, listing, detail pages, and purchase history views."""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -16,6 +18,7 @@ from billing.models import InvoiceItemBatch
 # ===============================
 @login_required
 def add_patient(request):
+    """Create a patient record from the doctor/pharmacist side of the app."""
 
     if request.user.role not in ['DOCTOR', 'PHARMACIST']:
         return redirect('home')
@@ -44,6 +47,7 @@ def add_patient(request):
 # ===============================
 @login_required
 def patient_list(request):
+    """Searchable patient list scoped to records created by the current user."""
 
     if request.user.role not in ['DOCTOR', 'PHARMACIST']:
         return redirect('home')
@@ -72,6 +76,7 @@ def patient_list(request):
 # PATIENT DETAIL
 # ===============================
 class PatientDetailView(RoleRequiredMixin, DetailView):
+    """Full patient profile with linked consultation history."""
 
     model = Patient
     template_name = "patients/patient_detail.html"
@@ -83,6 +88,7 @@ class PatientDetailView(RoleRequiredMixin, DetailView):
         return Patient.objects.all()
 
     def get_context_data(self, **kwargs):
+        """Attach consultation history for faculty/demo explanation."""
 
         context = super().get_context_data(**kwargs)
 
@@ -98,6 +104,7 @@ class PatientDetailView(RoleRequiredMixin, DetailView):
 # ===============================
 @login_required
 def edit_patient(request, pk):
+    """Update a patient record; only the creator can edit."""
 
     patient = get_object_or_404(Patient, pk=pk)
 
@@ -123,6 +130,7 @@ def edit_patient(request, pk):
 # ===============================
 @login_required
 def delete_patient(request, pk):
+    """Delete a patient record; only the creator can delete."""
 
     patient = get_object_or_404(Patient, pk=pk)
 
@@ -141,6 +149,7 @@ def delete_patient(request, pk):
 # ===============================
 @login_required
 def patient_purchase_history(request, pk):
+    """Show medicines actually purchased by the patient from paid invoices."""
 
     patient = get_object_or_404(Patient, pk=pk)
 

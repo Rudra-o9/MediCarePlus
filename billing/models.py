@@ -1,3 +1,5 @@
+"""Billing-side data models for invoices, invoice items, and payments."""
+
 from django.db import models, transaction
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -12,6 +14,7 @@ from decimal import Decimal, ROUND_HALF_UP
 # Invoice Model
 # =========================
 class Invoice(models.Model):
+    """Bill raised against a prescription."""
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Draft"
         PAID = "PAID", "Paid"
@@ -61,6 +64,7 @@ class Invoice(models.Model):
         return f"Invoice {self.invoice_number} - {self.status}"
 
     def calculate_total(self):
+        """Recalculate subtotal, GST, and grand total from invoice items."""
         totals = self.items.aggregate(
             subtotal=Sum("subtotal"),
             gst=Sum("cgst_amount") + Sum("sgst_amount"),
@@ -78,6 +82,7 @@ class Invoice(models.Model):
         ])
 
     def generate_invoice_number(self):
+        """Create a readable yearly invoice number such as `INV-2026-00001`."""
         year = timezone.now().year
         last_invoice = (
             Invoice.objects
@@ -96,6 +101,7 @@ class Invoice(models.Model):
         return f"INV-{year}-{str(new_number).zfill(5)}"
 
     def save(self, *args, **kwargs):
+        # Lock during invoice-number generation so concurrent invoices do not collide.
         if not self.invoice_number:
             with transaction.atomic():
                 self.invoice_number = self.generate_invoice_number()
@@ -103,9 +109,14 @@ class Invoice(models.Model):
         super().save(*args, **kwargs)
 
     def deduct_stock(self):
+        """Legacy helper for deducting stock from allocated batches."""
 
         from pharmacy.models import Batch
         from billing.models import InvoiceItemBatch
+
+        selected_store = self.prescription.assigned_store
+        if not selected_store:
+            raise ValidationError("Prescription must be assigned to a store before stock deduction.")
 
         allocations = InvoiceItemBatch.objects.select_related("batch").filter(
             invoice_item__invoice=self
@@ -127,6 +138,7 @@ class Invoice(models.Model):
 # Invoice Item
 # =========================
 class InvoiceItem(models.Model):
+    """One medicine line inside an invoice."""
     invoice = models.ForeignKey(
         Invoice,
         on_delete=models.CASCADE,
@@ -188,6 +200,8 @@ class InvoiceItem(models.Model):
 
 
     def save(self, *args, **kwargs):
+        # Save the medicine, subtotal, and GST amounts as a sale snapshot so
+        # future master-data changes do not modify historic invoice values.
 
         if self.invoice and self.invoice.status == "PAID" and self.pk:
             raise ValidationError("Cannot modify items of a PAID invoice.")
@@ -232,37 +246,12 @@ class InvoiceItem(models.Model):
 
         super().save(*args, **kwargs)
 
-        # Allocate batches FIFO
-        from billing.models import InvoiceItemBatch
-        from pharmacy.models import Batch
-
-        remaining_qty = self.quantity
-
-        batches = Batch.objects.filter(
-            medicine=self.medicine,
-            quantity__gt=0
-        ).order_by("expiry_date", "created_at")
-
-        for batch in batches:
-
-            if remaining_qty <= 0:
-                break
-
-            allocate_qty = min(batch.quantity, remaining_qty)
-
-            InvoiceItemBatch.objects.create(
-                invoice_item=self,
-                batch=batch,
-                quantity=allocate_qty
-            )
-
-            remaining_qty -= allocate_qty
-
         # Update invoice totals
         if self.invoice:
             self.invoice.calculate_total()
             
     def clean(self):
+        """Block over-dispensing compared with the prescribed quantity."""
         super().clean()
 
         if not self.prescription_item:
@@ -298,6 +287,12 @@ class InvoiceItem(models.Model):
 # Payment Model
 # =========================
 class Payment(models.Model):
+    """Money received against an invoice.
+
+    Business rule:
+    this model stores payment records, while the service layer performs the final
+    invoice-payment workflow such as stock deduction and status updates.
+    """
     METHOD_CHOICES = (('CASH','Cash'),('CARD','Card'),('UPI','UPI'),('BANK','Bank Transfer'))
 
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="payments")
@@ -317,27 +312,6 @@ class Payment(models.Model):
 
         super().save(*args, **kwargs)
 
-        # Check if invoice is fully paid
-        total_paid = self.invoice.payments.aggregate(total=Sum('amount'))['total'] or 0
-
-        if total_paid >= self.invoice.total_amount and self.invoice.status != "PAID":
-
-            self.invoice.status = "PAID"
-            self.invoice.save(update_fields=["status"])
-
-            # Deduct stock
-            self.invoice.deduct_stock()
-
-            # Update prescription
-            prescription = self.invoice.prescription
-            prescription.status = "BILLED"
-            prescription.save(update_fields=["status"])
-
-            # Close consultation
-            consultation = prescription.consultation
-            consultation.status = "CLOSED"
-            consultation.save(update_fields=["status"])
-
     def __str__(self):
         return f"{self.invoice.invoice_number} - {self.amount}"
         
@@ -347,6 +321,7 @@ class Payment(models.Model):
 # Invoice Log
 # =========================
 class InvoiceLog(models.Model):
+    """Audit record for invoice lifecycle actions such as pay/cancel."""
     ACTION_CHOICES = (('PAID','Paid'),('CANCELLED','Cancelled'))
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='logs')
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)
@@ -362,6 +337,7 @@ class InvoiceLog(models.Model):
 # Invoice Item Batch
 # =========================
 class InvoiceItemBatch(models.Model):
+    """Exact stock batch allocation used to fulfill an invoice item."""
     invoice_item = models.ForeignKey(InvoiceItem, on_delete=models.CASCADE, related_name='batch_allocations')
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name='invoice_allocations')
     quantity = models.PositiveIntegerField()

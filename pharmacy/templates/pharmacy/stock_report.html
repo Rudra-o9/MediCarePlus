@@ -1,34 +1,103 @@
-<h2>Stock Report</h2>
+{% extends "dashboard_base.html" %}
 
-<table>
+{% block page_title %}Stock Report{% endblock %}
 
-<tr>
-<th>Medicine</th>
-<th>Total Stock</th>
-<th>Batches</th>
-<th>Stock Value</th>
-</tr>
+{% block sidebar %}
+{% if user.role == "ADMIN" %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'store_management' %}">Stores</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'stock_report' %}" class="active">Stock Report</a>
+<a href="{% url 'expiry_report' %}">Expiry Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+{% else %}
+<a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'low_stock_medicines' %}">Low Stock</a>
+<a href="{% url 'near_expiry_batches' %}">Near Expiry</a>
+<a href="{% url 'expired_batches' %}">Expired</a>
+<a href="{% url 'stock_report' %}" class="active">Stock Report</a>
+{% endif %}
+{% endblock %}
 
-{% for item in stock_data %}
+{% block content %}
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Tracked Medicines</h4>
+        <p>{{ medicine_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total Units</h4>
+        <p>{{ total_stock_units }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Inventory Value</h4>
+        <p>Rs. {{ total_stock_value|floatformat:2 }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Report Focus</h4>
+        <p>Stock Health</p>
+    </div>
+</div>
 
-<tr>
+<div class="chart-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Inventory</span>
+            <h3>Stock Position by Medicine</h3>
+            <p>Review current stock, active batch coverage, and inventory value across the catalog before procurement or replenishment.</p>
+        </div>
+    </div>
 
-<td>{{ item.medicine.name }}</td>
-
-<td>{{ item.stock }}</td>
-
-<td>{{ item.batches }}</td>
-
-<td>₹ {{ item.value }}</td>
-
-</tr>
-
-{% empty %}
-
-<tr>
-<td colspan="4">No stock data available.</td>
-</tr>
-
-{% endfor %}
-
-</table>
+    <div class="sales-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Category</th>
+                    <th>Total Stock</th>
+                    <th>Batches</th>
+                    <th>Stock Value</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stock_data %}
+                <tr>
+                    <td>
+                        <div class="medicine-name-cell">
+                            <strong>{{ item.medicine.name }}</strong>
+                            <small>{{ item.medicine.manufacturer|default:"Manufacturer not set" }}</small>
+                        </div>
+                    </td>
+                    <td>{{ item.medicine.category.name }}</td>
+                    <td>{{ item.stock }}</td>
+                    <td>{{ item.batches }}</td>
+                    <td>Rs. {{ item.value|floatformat:2 }}</td>
+                    <td>
+                        {% if item.stock == 0 %}
+                        <span class="status-critical">Out of Stock</span>
+                        {% elif item.stock <= item.medicine.low_stock_threshold %}
+                        <span class="status-low">Low Stock</span>
+                        {% else %}
+                        <span class="status-paid">Healthy</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No stock data available.</strong>
+                            <p>Procure medicine batches first to build your inventory report.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

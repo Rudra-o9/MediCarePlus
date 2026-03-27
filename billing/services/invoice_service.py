@@ -1,3 +1,11 @@
+"""Service-layer business logic for completing and cancelling invoices.
+
+This is the main file to show when explaining:
+- how payment completion deducts stock,
+- how FIFO batch usage works,
+- how prescription and consultation statuses are recalculated.
+"""
+
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
@@ -9,6 +17,7 @@ from consultations.models import Prescription
 
 
 class InvoiceService:
+    """Single source of truth for invoice payment/cancellation workflow."""
 
     @staticmethod
     @transaction.atomic
@@ -55,7 +64,13 @@ class InvoiceService:
             raise ValidationError("User required to process payment.")
 
         today = timezone.now().date()
+        selected_store = invoice.prescription.assigned_store
 
+        if not selected_store:
+            raise ValidationError("Prescription must be assigned to a store before payment processing.")
+
+        # Lock invoice items and candidate batches so concurrent pharmacists
+        # cannot double-sell the same stock.
         items = (
             invoice.items
             .select_related("medicine")
@@ -65,11 +80,13 @@ class InvoiceService:
         for item in items:
             required_qty = item.quantity
 
-            # Lock available non-expired batches (FIFO by expiry)
+            # FIFO means earlier-expiring batches are sold first, which is the
+            # real-world pharmacy rule for reducing expiry waste.
             batches = (
                 Batch.objects
                 .select_for_update()
                 .filter(
+                    store=selected_store,
                     medicine=item.medicine,
                     expiry_date__gte=today,
                     quantity__gt=0
@@ -98,6 +115,7 @@ class InvoiceService:
                 # 🔴 Log SALE movement (negative quantity)
                 StockMovement.objects.create(
                     medicine=item.medicine,
+                    store=selected_store,
                     batch=batch,
                     movement_type="SALE",
                     quantity=-deduct_qty,
@@ -152,7 +170,7 @@ class InvoiceService:
         if invoice.status != "PAID":
             raise ValidationError("Only PAID invoices can be cancelled.")
 
-        # Lock invoice items
+        # Lock invoice items and their allocations so stock restoration is safe.
         items = invoice.items.select_for_update()
 
         for item in items:
@@ -164,6 +182,16 @@ class InvoiceService:
                 batch = allocation.batch
                 batch.quantity += allocation.quantity
                 batch.save(update_fields=["quantity"])
+
+                StockMovement.objects.create(
+                    medicine=item.medicine,
+                    store=batch.store,
+                    batch=batch,
+                    movement_type="RETURN",
+                    quantity=allocation.quantity,
+                    reference=invoice.invoice_number,
+                    performed_by=performed_by
+                )
 
             allocations.delete()
 
@@ -185,6 +213,7 @@ class InvoiceService:
 
     @staticmethod
     def _recalculate_prescription_status(prescription):
+        """Update prescription and consultation status from paid invoice totals."""
 
         all_items = prescription.items.all()
 
@@ -211,7 +240,20 @@ class InvoiceService:
         else:
             prescription.status = "PENDING"
 
-        prescription.save(update_fields=["status"])
+        has_active_invoice = prescription.invoices.exclude(status="CANCELLED").exists()
+
+        if prescription.status == "BILLED":
+            prescription.routing_status = "COMPLETED"
+        elif prescription.status == "PARTIALLY_BILLED":
+            prescription.routing_status = "PARTIALLY_FULFILLED"
+        elif has_active_invoice and prescription.assigned_store_id:
+            prescription.routing_status = "RECEIVED"
+        elif prescription.assigned_store_id:
+            prescription.routing_status = "SENT"
+        else:
+            prescription.routing_status = "UNSENT"
+
+        prescription.save(update_fields=["status", "routing_status"])
 
         consultation = prescription.consultation
 

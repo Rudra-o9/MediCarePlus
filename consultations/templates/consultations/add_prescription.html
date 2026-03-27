@@ -13,6 +13,28 @@
 
 <p><strong>Visit:</strong> {{ consultation.visit_number }}</p>
 
+{% if previous_consultations or previous_purchases %}
+<div class="dashboard-card" style="margin: 20px 0;">
+<h3>Previous Treatment Context</h3>
+
+{% if previous_consultations %}
+<p><strong>Recent Consultations:</strong>
+{% for visit in previous_consultations %}
+{{ visit.visit_number }}{% if visit.diagnoses.first %} - {{ visit.diagnoses.first.name }}{% endif %}{% if not forloop.last %}; {% endif %}
+{% endfor %}
+</p>
+{% endif %}
+
+{% if previous_purchases %}
+<p><strong>Recently Purchased Medicines:</strong>
+{% for purchase in previous_purchases %}
+{{ purchase.invoice_item.medicine.name }} ({{ purchase.quantity }}){% if not forloop.last %}, {% endif %}
+{% endfor %}
+</p>
+{% endif %}
+</div>
+{% endif %}
+
 <hr>
 
 <form method="post">

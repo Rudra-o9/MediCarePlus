@@ -1,0 +1,131 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Manage Categories{% endblock %}
+
+{% block sidebar %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'store_management' %}">Stores</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'manage_categories' %}" class="active">Categories</a>
+<a href="{% url 'manage_suppliers' %}">Suppliers</a>
+<a href="{% url 'manage_medicines' %}">Medicines</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+<a href="{% url 'expiry_report' %}">Expiry Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
+<a href="{% url 'billing:medicine_profit_report' %}">Profit Report</a>
+<a href="{% url 'billing:gst_summary_report' %}">GST Report</a>
+{% endblock %}
+
+{% block content %}
+<div class="category-summary-grid">
+<div class="summary-card">
+<h4>Total Categories</h4>
+<p>{{ category_count }}</p>
+</div>
+<div class="summary-card">
+<h4>Top Level</h4>
+<p>{{ top_level_count }}</p>
+</div>
+<div class="summary-card">
+<h4>Subcategories</h4>
+<p>{{ child_count }}</p>
+</div>
+<div class="summary-card">
+<h4>Editing Mode</h4>
+<p>{% if editing %}Active{% else %}Create{% endif %}</p>
+</div>
+</div>
+
+<div class="chart-card form-card">
+<div class="section-heading category-heading">
+<div>
+<span class="section-kicker">Category Setup</span>
+<h3>{% if editing %}Edit Category{% else %}Create Category{% endif %}</h3>
+<p>Organize medicines into clear parent and child groups so reporting and browsing stay manageable.</p>
+</div>
+{% if editing %}
+<a href="{% url 'manage_categories' %}" class="btn btn-secondary">Create New Instead</a>
+{% endif %}
+</div>
+<form method="post" class="patient-form">
+{% csrf_token %}
+{% if form.non_field_errors %}
+<div class="form-errors">
+{% for error in form.non_field_errors %}
+<small>{{ error }}</small>
+{% endfor %}
+</div>
+{% endif %}
+<div class="form-grid">
+{% for field in form %}
+<div class="form-group {% if field.name == 'description' %}full-width{% endif %}">
+<label>{{ field.label }}</label>
+{{ field }}
+{% if field.errors %}
+<small>{{ field.errors|join:", " }}</small>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+<button type="submit" class="btn btn-primary">{% if editing %}Update{% else %}Create{% endif %} Category</button>
+</form>
+</div>
+
+<div class="chart-card">
+<div class="section-heading category-heading">
+<div>
+<span class="section-kicker">Directory</span>
+<h3>Category Directory</h3>
+<p>Review parent structure and quickly jump into edits when a category needs cleanup.</p>
+</div>
+</div>
+<table class="report-table">
+<thead>
+<tr>
+<th>Name</th>
+<th>Parent</th>
+<th>Description</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+{% for category in categories %}
+<tr>
+<td>
+<div class="category-name-cell">
+<strong>{{ category.name }}</strong>
+<small>{% if category.parent %}Child category{% else %}Top-level category{% endif %}</small>
+</div>
+</td>
+<td>
+{% if category.parent %}
+<span class="approval-chip">{{ category.parent.name }}</span>
+{% else %}
+<span class="muted-item">No parent</span>
+{% endif %}
+</td>
+<td>
+{% if category.description %}
+<div class="category-description">{{ category.description }}</div>
+{% else %}
+<span class="muted-item">No description added yet.</span>
+{% endif %}
+</td>
+<td><a href="{% url 'edit_category' category.id %}" class="btn btn-edit">Edit</a></td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="4" class="empty-cell">
+<div class="approval-empty-state">
+<strong>No categories created yet.</strong>
+<p>Create your first category to organize medicine groups for procurement, reporting, and stock browsing.</p>
+</div>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

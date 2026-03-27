@@ -1,40 +1,93 @@
-<h2>Medicine Stock</h2>
+{% extends "dashboard_base.html" %}
 
-<table>
+{% block page_title %}Medicine Stock Visibility{% endblock %}
 
-<tr>
-<th>Medicine</th>
-<th>Stock</th>
-<th>Low Stock</th>
-<th>Near Expiry</th>
-</tr>
+{% block sidebar %}
+<a href="{% url 'doctor_dashboard' %}">Dashboard</a>
+<a href="{% url 'doctor_medicine_stock' %}" class="active">Medicine Stock</a>
+{% endblock %}
 
-{% for item in stock_data %}
+{% block content %}
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Tracked Medicines</h4>
+        <p>{{ medicine_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Low Stock</h4>
+        <p>{{ low_stock_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Near Expiry</h4>
+        <p>{{ near_expiry_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Purpose</h4>
+        <p>Routing Support</p>
+    </div>
+</div>
 
-<tr>
+<div class="chart-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Doctor View</span>
+            <h3>Medicine Availability Snapshot</h3>
+            <p>Use this view before routing prescriptions so you can compare stock sufficiency and expiry risk across medicines.</p>
+        </div>
+    </div>
 
-<td>{{ item.medicine.name }}</td>
-
-<td>{{ item.stock }}</td>
-
-<td>
-{% if item.low_stock %}
-Yes
-{% else %}
-No
-{% endif %}
-</td>
-
-<td>
-{% if item.near_expiry %}
-Yes
-{% else %}
-No
-{% endif %}
-</td>
-
-</tr>
-
-{% endfor %}
-
-</table>
+    <div class="sales-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Current Stock</th>
+                    <th>Low Stock</th>
+                    <th>Near Expiry</th>
+                    <th>Recommendation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stock_data %}
+                <tr>
+                    <td>{{ item.medicine.name }}</td>
+                    <td>{{ item.stock }}</td>
+                    <td>
+                        {% if item.low_stock %}
+                        <span class="status-low">Yes</span>
+                        {% else %}
+                        <span class="status-paid">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.near_expiry %}
+                        <span class="status-warning">Yes</span>
+                        {% else %}
+                        <span class="status-paid">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.stock == 0 %}
+                        Consider alternate store
+                        {% elif item.low_stock or item.near_expiry %}
+                        Route carefully
+                        {% else %}
+                        Healthy availability
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No medicine stock data is available.</strong>
+                            <p>Once batches are procured, this page will help guide routing decisions.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

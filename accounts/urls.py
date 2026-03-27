@@ -25,6 +25,13 @@ urlpatterns = [
 
     # ADMIN DASHBOARD
     path("admin-dashboard/", views.admin_dashboard, name="admin_dashboard"),
+    path("stores/", views.store_management, name="store_management"),
+    path("stores/<int:store_id>/edit/", views.edit_store, name="edit_store"),
+    path("stores/<int:store_id>/delete/", views.delete_store, name="delete_store"),
+    path("stores/<int:store_id>/assign-staff/", views.assign_store_staff, name="assign_store_staff"),
+    path("stores/<int:store_id>/remove-staff/<int:user_id>/", views.remove_store_staff, name="remove_store_staff"),
+    path("procurement/", views.procurement_management, name="procurement_management"),
+    path("system-settings/", views.system_settings_view, name="system_settings"),
 
     # USER APPROVAL
     path("approve-doctors/", views.approve_doctors, name="approve_doctors"),

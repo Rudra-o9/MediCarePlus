@@ -1,9 +1,21 @@
+"""Inventory and store-side models for MediCarePlus.
+
+Feature ownership:
+- medicine/category define the catalog,
+- supplier and store support procurement and fulfillment,
+- batch stores expiry-aware stock,
+- stock movement is the audit trail for purchases, sales, returns, and adjustments.
+"""
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db.models import Sum
+from django.conf import settings
+from accounts.models import Area, City
 
 class MedicineCategory(models.Model):
+    """Medicine classification used for reporting and organization."""
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
 
@@ -24,6 +36,7 @@ class MedicineCategory(models.Model):
         return self.name
 
 class Supplier(models.Model):
+    """Vendor from whom the admin buys stock in bulk."""
     name = models.CharField(max_length=255)
     contact_person = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=20)
@@ -40,7 +53,48 @@ class Supplier(models.Model):
     def __str__(self):
         return self.name
 
+
+class Store(models.Model):
+    """A real pharmacy/store location.
+
+    Important real-world rule:
+    stock belongs to a store, not to an individual pharmacist.
+    """
+    name = models.CharField(max_length=255)
+    city = models.ForeignKey(
+        City,
+        on_delete=models.PROTECT,
+        related_name="stores"
+    )
+    area = models.ForeignKey(
+        Area,
+        on_delete=models.PROTECT,
+        related_name="stores",
+        null=True,
+        blank=True
+    )
+    address = models.TextField(blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
+    is_active = models.BooleanField(default=True)
+    staff = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="stores",
+        blank=True,
+        limit_choices_to={"role": "PHARMACIST"}
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["city__name", "name"]
+        unique_together = ("city", "name")
+
+    def __str__(self):
+        return f"{self.name} ({self.city.name})"
+
 class Medicine(models.Model):
+    """Medicine master data used across prescription, inventory, and billing."""
     name = models.CharField(max_length=255, unique=True)
     manufacturer = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
@@ -89,6 +143,14 @@ class Medicine(models.Model):
         return f"{self.name} ({self.stock_quantity} in stock)"
 
 class Batch(models.Model):
+    """Expiry-aware stock unit purchased for a specific store."""
+    store = models.ForeignKey(
+        Store,
+        on_delete=models.CASCADE,
+        related_name="batches",
+        null=True,
+        blank=True,
+    )
     supplier = models.ForeignKey(
         Supplier,
         on_delete=models.PROTECT,
@@ -104,11 +166,15 @@ class Batch(models.Model):
 
     class Meta:
         ordering = ["expiry_date"]
+        unique_together = ("store", "medicine", "batch_number")
 
     def __str__(self):
-        return f"{self.medicine.name} - {self.batch_number} ({self.quantity})"
+        store_name = self.store.name if self.store else "Unassigned Store"
+        return f"{self.medicine.name} - {self.batch_number} @ {store_name} ({self.quantity})"
 
     def save(self, *args, **kwargs):
+        # Keep medicine-level stock in sync with store batches and create audit
+        # entries whenever a batch is first purchased or manually adjusted.
         is_new = self.pk is None
         old_quantity = 0
 
@@ -150,10 +216,20 @@ class Batch(models.Model):
         medicine.save(update_fields=["stock_quantity"])
 
     def clean(self):
+        """Protect against invalid expiry dates and location mismatches."""
         if self.expiry_date and self.expiry_date <= timezone.now().date():
             raise ValidationError("Cannot create batch with past expiry date.")
-        if self.quantity < 0:
-            raise ValidationError("Batch quantity cannot be negative.")
+        if self.quantity <= 0:
+            raise ValidationError("Batch quantity must be greater than zero.")
+        if self.purchase_price <= 0:
+            raise ValidationError("Purchase price must be greater than zero.")
+        if self.selling_price <= 0:
+            raise ValidationError("Selling price must be greater than zero.")
+        if self.area_mismatch():
+            raise ValidationError("Selected store area does not belong to the selected city.")
+
+    def area_mismatch(self):
+        return bool(self.store and self.store.area and self.store.area.city_id != self.store.city_id)
 
     def update_medicine_stock(self):
         total = self.medicine.batches.aggregate(total=Sum("quantity"))["total"] or 0
@@ -170,6 +246,7 @@ class Batch(models.Model):
         return self.expiry_date < timezone.now().date()
     
 class StockMovement(models.Model):
+    """Inventory ledger entry for procurement, sale, return, or adjustment."""
 
     MOVEMENT_TYPES = (
         ("PURCHASE", "Purchase"),
@@ -181,6 +258,13 @@ class StockMovement(models.Model):
     medicine = models.ForeignKey(
         Medicine,
         on_delete=models.CASCADE,
+        related_name="stock_movements"
+    )
+    store = models.ForeignKey(
+        Store,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="stock_movements"
     )
 
@@ -220,5 +304,6 @@ class StockMovement(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.medicine.name} | {self.movement_type} | {self.quantity}"
+        store_name = self.store.name if self.store else "No Store"
+        return f"{self.medicine.name} | {store_name} | {self.movement_type} | {self.quantity}"
     

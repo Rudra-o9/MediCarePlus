@@ -7,32 +7,90 @@
 <a href="{% url 'approve_doctors' %}">Approve Doctors</a>
 <a href="{% url 'approve_pharmacists' %}">Approve Pharmacists</a>
 <a href="{% url 'billing:sales_report' %}">Sales Report</a>
-<a href="{% url 'billing:medicine_profit_report' %}">Profit Report</a>
+<a href="{% url 'billing:medicine_profit_report' %}" class="active">Profit Report</a>
 {% endblock %}
 
 {% block content %}
-
-<div class="dashboard-card" style="max-width:750px; margin-bottom:20px;">
-
-<form method="get" style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
-
-<label>Start Date</label>
-<input type="date" name="start_date" value="{{ start_date }}">
-
-<label>End Date</label>
-<input type="date" name="end_date" value="{{ end_date }}">
-
-<button type="submit">Filter</button>
-
-</form>
-
+<div class="profit-summary-grid">
+    <div class="summary-card">
+        <h4>Report Scope</h4>
+        <p>{% if selected_store %}Store{% else %}All Stores{% endif %}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total Revenue</h4>
+        <p>Rs. {{ summary.total_revenue }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total Profit</h4>
+        <p>Rs. {{ summary.total_profit }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Top Margin</h4>
+        <p>{% if report %}{{ report.0.medicine }}{% else %}No Data{% endif %}</p>
+    </div>
 </div>
 
-<div style="margin-bottom:15px;">
-<a href="?export=csv&start_date={{ start_date }}&end_date={{ end_date }}">
-Export CSV
-</a>
+<div class="chart-card profit-filter-card">
+    <div class="section-heading profit-heading">
+        <div>
+            <span class="section-kicker">Filters</span>
+            <h3>Refine Profit Window</h3>
+            <p>Compare medicine-level revenue, cost, and margin across a date range or a specific store before exporting the report.</p>
+        </div>
+        <div class="profit-action-group">
+            <a href="?export=csv&start_date={{ start_date }}&end_date={{ end_date }}{% if selected_store_id %}&store={{ selected_store_id }}{% endif %}" class="btn btn-secondary">
+                Export CSV
+            </a>
+            {% if selected_store %}
+            <div class="sales-scope-chip">
+                <strong>{{ selected_store.name }}</strong>
+                <span>{% if selected_store.area %}{{ selected_store.area.name }}{% else %}Store scope active{% endif %}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="get" class="sales-filter-form">
+        <div class="sales-filter-grid">
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+            </div>
+            {% if user.role == "ADMIN" %}
+            <div class="form-group sales-filter-store">
+                <label>Store</label>
+                <select name="store">
+                    <option value="">All Stores</option>
+                    {% for store in stores %}
+                    <option value="{{ store.id }}" {% if selected_store_id == store.id|stringformat:"s" %}selected{% endif %}>
+                        {{ store.name }} - {{ store.city.name }}{% if store.area %}, {{ store.area.name }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+        <div class="sales-filter-actions">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{% url 'billing:medicine_profit_report' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
 </div>
+
+<div class="chart-card">
+    <div class="section-heading profit-heading">
+        <div>
+            <span class="section-kicker">Profitability</span>
+            <h3>Medicine Profit Breakdown</h3>
+            <p>See which medicines are generating revenue efficiently and which lines are compressing margin.</p>
+        </div>
+    </div>
+
+<div class="sales-table-wrap">
 <table class="report-table">
     <thead>
         <tr>
@@ -47,16 +105,26 @@ Export CSV
     <tbody>
         {% for item in report %}
         <tr>
-            <td>{{ item.medicine }}</td>
-            <td>{{ item.quantity_sold }}</td>
-            <td>{{ item.revenue }}</td>
-            <td>{{ item.cost }}</td>
-            <td>{{ item.profit }}</td>
+            <td>
+                <div class="sales-medicine-cell">
+                    <strong>{{ item.medicine }}</strong>
+                    <small>Medicine performance line item</small>
+                </div>
+            </td>
+            <td><span class="status-badge">{{ item.quantity_sold }} sold</span></td>
+            <td>Rs. {{ item.revenue }}</td>
+            <td>Rs. {{ item.cost }}</td>
+            <td>Rs. {{ item.profit }}</td>
             <td>{{ item.margin }}%</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">No data available for selected period.</td>
+            <td colspan="6" class="empty-cell">
+                <div class="approval-empty-state">
+                    <strong>No data available for selected period.</strong>
+                    <p>Try widening the date range or changing the selected store to surface medicine-level profit data.</p>
+                </div>
+            </td>
         </tr>
         {% endfor %}
     </tbody>
@@ -64,12 +132,14 @@ Export CSV
         <tr>
             <th>Total</th>
             <th></th>
-            <th>{{ summary.total_revenue }}</th>
-            <th>{{ summary.total_cost }}</th>
-            <th>{{ summary.total_profit }}</th>
+            <th>Rs. {{ summary.total_revenue }}</th>
+            <th>Rs. {{ summary.total_cost }}</th>
+            <th>Rs. {{ summary.total_profit }}</th>
             <th>{{ summary.total_margin }}%</th>
         </tr>
     </tfoot>
 </table>
+</div>
+</div>
 
 {% endblock %}  

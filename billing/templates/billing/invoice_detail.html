@@ -1,230 +1,223 @@
 {% extends "dashboard_base.html" %}
 
-{% block page_title %}Invoice{% endblock %}
+{% block page_title %}Invoice Detail{% endblock %}
 
 {% block sidebar %}
 <a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
 <a href="{% url 'billing:prescription_queue' %}">Prescriptions</a>
-<a href="{% url 'billing:invoice_list' %}">Invoices</a>
+<a href="{% url 'billing:invoice_list' %}" class="active">Invoices</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'low_stock_medicines' %}">Low Stock</a>
+<a href="{% url 'near_expiry_batches' %}">Near Expiry</a>
+<a href="{% url 'expired_batches' %}">Expired</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
 {% endblock %}
 
 {% block content %}
-
-<!-- ================= Invoice Header ================= -->
-
-<div class="chart-card">
-
-<div style="display:flex; justify-content:space-between; align-items:center;">
-
-<div>
-
-<h2>Invoice {{ invoice.invoice_number }}</h2>
-
-<div class="invoice-meta">
-
-<p>
-<strong>Patient:</strong>
-{{ invoice.prescription.consultation.patient.full_name }}
-</p>
-
-<p>
-<strong>Doctor:</strong>
-{{ invoice.prescription.consultation.doctor.full_name }}
-</p>
-
-<p>
-<strong>Invoice Date:</strong>
-{{ invoice.created_at|date:"d M Y H:i" }}
-</p>
-
-<p>
-<strong>Status:</strong>
-<span class="status-badge">{{ invoice.status }}</span>
-</p>
-
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Invoice</h4>
+        <p>{{ invoice.invoice_number }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total Amount</h4>
+        <p>Rs. {{ invoice.total_amount }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Payments Received</h4>
+        <p>Rs. {{ payment_total }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Balance Due</h4>
+        <p>Rs. {{ balance_due }}</p>
+    </div>
 </div>
 
+<div class="chart-card invoice-hero-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Invoice</span>
+            <h3>Invoice Detail Workspace</h3>
+            <p>Review the billed medicines, stock allocations, and payment trail for this invoice before downloading or collecting payment.</p>
+        </div>
+        <div class="profit-action-group">
+            <a href="{% url 'billing:invoice_pdf' invoice.pk %}" class="btn btn-secondary">Download PDF</a>
+            {% if invoice.status != "PAID" %}
+            <a href="{% url 'billing:add_payment' invoice.pk %}" class="btn btn-success">Receive Payment</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="invoice-meta-grid">
+        <div class="invoice-meta-card">
+            <span class="section-kicker">Patient</span>
+            <h4>{{ invoice.prescription.consultation.patient.full_name }}</h4>
+            <p>Doctor: {{ invoice.prescription.consultation.doctor.full_name }}</p>
+        </div>
+        <div class="invoice-meta-card">
+            <span class="section-kicker">Issued</span>
+            <h4>{{ invoice.created_at|date:"d M Y" }}</h4>
+            <p>{{ invoice.created_at|date:"h:i A" }}</p>
+        </div>
+        <div class="invoice-meta-card">
+            <span class="section-kicker">Store</span>
+            <h4>{{ current_store.name }}</h4>
+            <p>{{ current_store.city.name }}{% if current_store.area %}, {{ current_store.area.name }}{% endif %}</p>
+        </div>
+        <div class="invoice-meta-card">
+            <span class="section-kicker">Status</span>
+            <h4>
+                {% if invoice.status == "PAID" %}
+                <span class="status-paid">Paid</span>
+                {% elif invoice.status == "CANCELLED" %}
+                <span class="status-danger">Cancelled</span>
+                {% else %}
+                <span class="status-draft">Draft</span>
+                {% endif %}
+            </h4>
+            <p>{{ item_count }} billed line{{ item_count|pluralize }} across {{ batch_line_count }} batch allocation{{ batch_line_count|pluralize }}</p>
+        </div>
+    </div>
 </div>
-
-<div>
-
-<a href="{% url 'billing:invoice_pdf' invoice.pk %}" class="pdf-btn">
-Download PDF
-</a>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- ================= Layout Wrapper ================= -->
 
 <div class="invoice-layout">
+    <div class="chart-card">
+        <div class="section-heading">
+            <div>
+                <span class="section-kicker">Items</span>
+                <h3>Medicine Line Items</h3>
+                <p>Each billed line preserves the selling price and GST values used at the time of checkout.</p>
+            </div>
+        </div>
 
+        <div class="sales-table-wrap">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Medicine</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>GST %</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in invoice.items.all %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <div class="sales-medicine-cell">
+                                <strong>{{ item.medicine.name }}</strong>
+                                {% if item.batch_allocations.all %}
+                                <div class="invoice-batch-list">
+                                    {% for alloc in item.batch_allocations.all %}
+                                    <span class="invoice-batch-pill">Batch {{ alloc.batch.batch_number }} x {{ alloc.quantity }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ item.quantity }}</td>
+                        <td>Rs. {{ item.price_at_sale }}</td>
+                        <td>{{ item.gst_percentage_at_sale }}%</td>
+                        <td>Rs. {{ item.total_with_tax }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty-cell">
+                            <div class="approval-empty-state">
+                                <strong>No medicines are attached to this invoice.</strong>
+                                <p>Add invoice items from the prescription queue before collecting payment.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-<!-- ================= Medicines Table ================= -->
+    <div class="chart-card invoice-summary">
+        <div class="section-heading">
+            <div>
+                <span class="section-kicker">Summary</span>
+                <h3>Billing Snapshot</h3>
+            </div>
+        </div>
+
+        <div class="summary-row">
+            <div>Subtotal</div>
+            <div>Rs. {{ invoice.subtotal_amount }}</div>
+        </div>
+        <div class="summary-row">
+            <div>Total GST</div>
+            <div>Rs. {{ invoice.total_gst }}</div>
+        </div>
+        <div class="summary-row">
+            <div>Payments</div>
+            <div>Rs. {{ payment_total }}</div>
+        </div>
+        <div class="summary-row total-row">
+            <div>Grand Total</div>
+            <div>Rs. {{ invoice.total_amount }}</div>
+        </div>
+        <div class="summary-row">
+            <div>Balance Due</div>
+            <div>Rs. {{ balance_due }}</div>
+        </div>
+
+        {% if invoice.status == "PAID" %}
+        <div class="paid-label">Payment completed</div>
+        {% elif invoice.status == "CANCELLED" %}
+        <div class="paid-label">Invoice cancelled</div>
+        {% else %}
+        <div class="payment-container">
+            <a href="{% url 'billing:add_payment' invoice.pk %}" class="btn btn-success">Receive Payment</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
 
 <div class="chart-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Payments</span>
+            <h3>Payment History</h3>
+            <p>Track how and when money was received against this invoice.</p>
+        </div>
+    </div>
 
-<h3>Medicines</h3>
-
-<table class="report-table">
-
-<thead>
-<tr>
-<th>#</th>
-<th>Medicine</th>
-<th>Quantity</th>
-<th>Unit Price</th>
-<th>Total</th>
-</tr>
-</thead>
-
-<tbody>
-
-{% for item in invoice.items.all %}
-
-<tr>
-
-<td>{{ forloop.counter }}</td>
-
-<td>
-
-<strong>{{ item.medicine.name }}</strong>
-
-{% if item.batch_allocations.all %}
-
-<div class="batch-info">
-
-{% for alloc in item.batch_allocations.all %}
-
-<div>
-Batch {{ alloc.batch.batch_number }} → {{ alloc.quantity }}
+    <div class="sales-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Amount</th>
+                    <th>Received By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in invoice.payments.all %}
+                <tr>
+                    <td>{{ payment.created_at|date:"d M Y, h:i A" }}</td>
+                    <td>{{ payment.get_method_display }}</td>
+                    <td>Rs. {{ payment.amount }}</td>
+                    <td>{% if payment.received_by %}{{ payment.received_by.full_name }}{% else %}-{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No payments have been recorded yet.</strong>
+                            <p>Collect payment to move this invoice into the paid state.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-
-{% endfor %}
-
-</div>
-
-{% endif %}
-
-</td>
-
-<td>{{ item.quantity }}</td>
-
-<td>₹ {{ item.price_at_sale }}</td>
-
-<td>₹ {{ item.total_with_tax }}</td>
-
-</tr>
-
-{% empty %}
-
-<tr>
-<td colspan="5">No medicines in this invoice</td>
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
-
-</div>
-
-
-<!-- ================= Invoice Summary ================= -->
-
-<div class="chart-card invoice-summary">
-
-<h3>Invoice Summary</h3>
-
-<div class="summary-row">
-<div>Subtotal</div>
-<div>₹ {{ invoice.subtotal_amount }}</div>
-</div>
-
-<div class="summary-row">
-<div>GST</div>
-<div>₹ {{ invoice.total_gst }}</div>
-</div>
-
-<div class="summary-row total-row">
-<div>Total Amount</div>
-<div>₹ {{ invoice.total_amount }}</div>
-</div>
-
-{% if invoice.status != "PAID" %}
-
-<div class="payment-container">
-
-<a href="{% url 'billing:add_payment' invoice.pk %}" class="btn-success">
-Receive Payment
-</a>
-
-</div>
-
-{% else %}
-
-<div class="paid-label">
-✔ Payment Completed
-</div>
-
-{% endif %}
-
-</div>
-
-
-</div>
-
-
-<!-- ================= Payment History ================= -->
-
-<div class="chart-card">
-
-<h3>Payments</h3>
-
-<table class="report-table">
-
-<thead>
-<tr>
-<th>Date</th>
-<th>Method</th>
-<th>Amount</th>
-<th>Received By</th>
-</tr>
-</thead>
-
-<tbody>
-
-{% for payment in invoice.payments.all %}
-
-<tr>
-
-<td>{{ payment.created_at|date:"d M Y H:i" }}</td>
-
-<td>{{ payment.get_method_display }}</td>
-
-<td>₹ {{ payment.amount }}</td>
-
-<td>{{ payment.received_by.full_name }}</td>
-
-</tr>
-
-{% empty %}
-
-<tr>
-<td colspan="4">No payments recorded</td>
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
-
-</div>
-
 {% endblock %}

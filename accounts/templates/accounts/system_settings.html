@@ -1,0 +1,95 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}System Settings{% endblock %}
+
+{% block sidebar %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'approve_doctors' %}">Approve Doctors</a>
+<a href="{% url 'approve_pharmacists' %}">Approve Pharmacists</a>
+<a href="{% url 'store_management' %}">Stores</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'manage_categories' %}">Categories</a>
+<a href="{% url 'manage_suppliers' %}">Suppliers</a>
+<a href="{% url 'manage_medicines' %}">Medicines</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+<a href="{% url 'expiry_report' %}">Expiry Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
+<a href="{% url 'billing:medicine_profit_report' %}">Profit Report</a>
+<a href="{% url 'billing:gst_summary_report' %}">GST Report</a>
+<a href="{% url 'system_settings' %}" class="active">Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid small-cards">
+    <div class="dashboard-card card-teal">
+        <h3>Approved Doctors</h3>
+        <p>{{ security_context.approved_doctors }}</p>
+    </div>
+    <div class="dashboard-card card-green">
+        <h3>Approved Pharmacists</h3>
+        <p>{{ security_context.approved_pharmacists }}</p>
+    </div>
+    <div class="dashboard-card card-purple">
+        <h3>Pending Approvals</h3>
+        <p>{{ security_context.pending_doctors|add:security_context.pending_pharmacists }}</p>
+    </div>
+    <div class="dashboard-card">
+        <h3>Active Stores</h3>
+        <p>{{ security_context.active_stores }}</p>
+    </div>
+</div>
+
+<div class="chart-card form-card">
+    <h3>Security and Access Policy</h3>
+    <form method="post" class="patient-form">
+        {% csrf_token %}
+        <div class="form-grid">
+            {% for field in form %}
+            <div class="form-group {% if field.name == 'expiry_alert_days' %}full-width{% endif %}">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                <small>{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                <small>{{ field.errors|join:", " }}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+</div>
+
+<div class="chart-card">
+    <h3>What These Settings Control</h3>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Setting</th>
+                <th>Effect</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Doctor Self Registration</td>
+                <td>Controls whether new doctor accounts can be created from the public registration page.</td>
+            </tr>
+            <tr>
+                <td>Pharmacist Self Registration</td>
+                <td>Controls whether new pharmacist accounts can be created from the public registration page.</td>
+            </tr>
+            <tr>
+                <td>Approval Required</td>
+                <td>Controls whether new doctor and pharmacist accounts stay pending until admin approval.</td>
+            </tr>
+            <tr>
+                <td>Expiry Alert Days</td>
+                <td>Controls how far ahead the admin dashboard shows near-expiry stock alerts.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

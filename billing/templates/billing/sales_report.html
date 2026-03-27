@@ -7,6 +7,8 @@
 <a href="{% url 'admin_dashboard' %}">Dashboard</a>
 {% else %}
 <a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
+<a href="{% url 'billing:prescription_queue' %}">Prescriptions</a>
+<a href="{% url 'billing:invoice_list' %}">Invoices</a>
 {% endif %}
 <a href="{% url 'medicine_list' %}">Medicines</a>
 <a href="{% url 'low_stock_medicines' %}">Low Stock</a>
@@ -16,88 +18,166 @@
 {% endblock %}
 
 {% block content %}
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Report Scope</h4>
+        <p>{% if selected_store %}Store{% else %}All Stores{% endif %}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total Revenue</h4>
+        <p>Rs. {{ total_revenue }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total Invoices</h4>
+        <p>{{ total_invoices }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Average Sale</h4>
+        <p>Rs. {{ avg_sale|floatformat:2 }}</p>
+    </div>
+</div>
 
-<div class="dashboard-card">
-    <h3>Filter Sales</h3>
+{% if no_store_assigned %}
+<div class="chart-card">
+    <div class="approval-empty-state">
+        <strong>No active store is assigned to this pharmacist account.</strong>
+        <p>Sales reporting is store-based for pharmacists. Ask an admin to assign this account to an active store so paid invoices and medicine sales become visible here.</p>
+    </div>
+</div>
+{% endif %}
 
-    <form method="get" style="margin-bottom:20px;">
-        <input type="date" name="start_date" value="{{ start_date }}">
-        <input type="date" name="end_date" value="{{ end_date }}">
-        <button type="submit">Filter</button>
+<div class="chart-card sales-filter-card">
+    <div class="section-heading sales-heading">
+        <div>
+            <span class="section-kicker">Filters</span>
+            <h3>Refine Sales Window</h3>
+            <p>Slice paid invoice performance by date range and store to inspect revenue movement with less noise.</p>
+        </div>
+        {% if selected_store %}
+        <div class="sales-scope-chip">
+            <strong>{{ selected_store.name }}</strong>
+            <span>{% if selected_store.area %}{{ selected_store.area.name }}{% else %}Store scope active{% endif %}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <form method="get" class="sales-filter-form">
+        <div class="sales-filter-grid">
+            <div class="form-group">
+                <label>Start date</label>
+                <input type="date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div class="form-group">
+                <label>End date</label>
+                <input type="date" name="end_date" value="{{ end_date }}">
+            </div>
+            {% if user.role == "ADMIN" %}
+            <div class="form-group sales-filter-store">
+                <label>Store</label>
+                <select name="store">
+                    <option value="">All Stores</option>
+                    {% for store in stores %}
+                    <option value="{{ store.id }}" {% if selected_store_id == store.id|stringformat:"s" %}selected{% endif %}>
+                        {{ store.name }} - {{ store.city.name }}{% if store.area %}, {{ store.area.name }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+        <div class="sales-filter-actions">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{% url 'billing:sales_report' %}" class="btn btn-secondary">Reset</a>
+        </div>
     </form>
 </div>
 
+<div class="chart-card">
+    <div class="section-heading sales-heading">
+        <div>
+            <span class="section-kicker">Invoices</span>
+            <h3>Invoice Sales</h3>
+            <p>Paid invoices listed in descending order so recent activity and downloadable bills stay easy to review.</p>
+        </div>
+    </div>
 
-<div class="dashboard-card">
-    <h3>Invoice Sales</h3>
-
-    <table class="sales-table">
-
-    <thead>
-    <tr>
-    <th>#</th>
-    <th>Date</th>
-    <th>Amount</th>
-    <th>Status</th>
-    <th>PDF</th>
-    </tr>
-    </thead>
-
-    <tbody>
-
-    {% for invoice in invoices %}
-
-    <tr>
-
-    <td>#{{ invoice.id }}</td>
-    <td>{{ invoice.created_at|date:"d M Y" }}</td>
-    <td>₹ {{ invoice.total_amount }}</td>
-
-    <td>
-    <span class="paid">PAID</span>
-    </td>
-
-    <td>
-    <a href="{% url 'billing:invoice_pdf' invoice.id %}" class="pdf-btn">
-    Download
-    </a>
-    </td>
-
-    </tr>
-
-    {% endfor %}
-
-    </tbody>
-    </table>
+    <div class="sales-table-wrap">
+        <table class="sales-table report-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>PDF</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                <tr>
+                    <td>#{{ invoice.id }}</td>
+                    <td>{{ invoice.created_at|date:"d M Y" }}</td>
+                    <td>Rs. {{ invoice.total_amount }}</td>
+                    <td><span class="paid">PAID</span></td>
+                    <td>
+                        <a href="{% url 'billing:invoice_pdf' invoice.id %}" class="pdf-btn">Download</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No paid invoices found for the selected filters.</strong>
+                            <p>Try widening the date range or clearing store filters to bring more sales activity into view.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
+<div class="chart-card">
+    <div class="section-heading sales-heading">
+        <div>
+            <span class="section-kicker">Highlights</span>
+            <h3>Top Selling Medicines</h3>
+            <p>Best-performing medicines for the selected report window, ranked by total quantity sold.</p>
+        </div>
+    </div>
 
-<div class="dashboard-card">
-    <h3>Top Selling Medicines</h3>
-
-    <table class="sales-table">
-
-    <thead>
-    <tr>
-    <th>Medicine</th>
-    <th>Total Sold</th>
-    </tr>
-    </thead>
-
-    <tbody>
-
-    {% for med in top_medicines %}
-
-    <tr>
-    <td>{{ med.prescription_item__medicine__name }}</td>
-    <td>{{ med.total_sold }}</td>
-    </tr>
-
-    {% endfor %}
-
-    </tbody>
-
-    </table>
+    <div class="sales-table-wrap">
+        <table class="sales-table report-table">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Total Sold</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for med in top_medicines %}
+                <tr>
+                    <td>
+                        <div class="sales-medicine-cell">
+                            <strong>{{ med.prescription_item__medicine__name }}</strong>
+                            <small>Ranked by dispensed quantity</small>
+                        </div>
+                    </td>
+                    <td><span class="status-badge">{{ med.total_sold }} sold</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No medicine sales data is available for the selected filters.</strong>
+                            <p>Once paid invoices exist for this store and date range, top-selling medicines will appear here.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-
 {% endblock %}

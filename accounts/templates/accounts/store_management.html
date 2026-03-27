@@ -1,0 +1,253 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Store Management{% endblock %}
+
+{% block sidebar %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'approve_doctors' %}">Approve Doctors</a>
+<a href="{% url 'approve_pharmacists' %}">Approve Pharmacists</a>
+<a href="{% url 'store_management' %}" class="active">Stores</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'manage_categories' %}">Categories</a>
+<a href="{% url 'manage_suppliers' %}">Suppliers</a>
+<a href="{% url 'manage_medicines' %}">Medicines</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+<a href="{% url 'expiry_report' %}">Expiry Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
+<a href="{% url 'billing:medicine_profit_report' %}">Profit Report</a>
+<a href="{% url 'billing:gst_summary_report' %}">GST Report</a>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid small-cards">
+    <div class="dashboard-card card-teal">
+        <h3>Active Stores</h3>
+        <p>{{ stores|length }}</p>
+    </div>
+</div>
+
+<div class="chart-card form-card">
+    <h3>Create Store</h3>
+    <form method="post" class="patient-form">
+        {% csrf_token %}
+        <div class="form-grid">
+            {% for field in form %}
+            <div class="form-group {% if field.name == 'address' %}full-width{% endif %}">
+                <label>{{ field.label }}</label>
+                {% if field.name == "area" %}
+                <select name="{{ field.html_name }}" id="{{ field.id_for_label }}">
+                    <option value="">Select Area</option>
+                    {% for area in field.field.queryset %}
+                    <option value="{{ area.id }}"
+                            data-city-id="{{ area.city_id }}"
+                            {% if field.value|stringformat:"s" == area.id|stringformat:"s" %}selected{% endif %}>
+                        {{ area.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                {{ field }}
+                {% endif %}
+                {% if field.errors %}
+                <small>{{ field.errors|join:", " }}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">Create Store</button>
+    </form>
+</div>
+
+<div class="chart-card">
+    <h3>Store Directory</h3>
+    <form method="get" class="store-filter-bar">
+        <input type="text" name="q" value="{{ selected_query }}" placeholder="Search store name">
+
+        <select name="city" data-store-city-filter>
+            <option value="">All Cities</option>
+            {% for city in filter_cities %}
+            <option value="{{ city.id }}" {% if selected_city == city.id|stringformat:"s" %}selected{% endif %}>
+                {{ city.name }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <select name="area" data-store-area-filter>
+            <option value="">All Areas</option>
+            {% for area in filter_areas %}
+            <option value="{{ area.id }}"
+                    data-city-id="{{ area.city_id }}"
+                    {% if selected_area == area.id|stringformat:"s" %}selected{% endif %}>
+                {{ area.name }} - {{ area.city.name }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <select name="status">
+            <option value="">All Statuses</option>
+            <option value="active" {% if selected_status == "active" %}selected{% endif %}>Active</option>
+            <option value="inactive" {% if selected_status == "inactive" %}selected{% endif %}>Inactive</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+
+    <div class="store-directory-grid">
+        {% for row in store_rows %}
+        <article class="store-card">
+            <div class="store-card-header">
+                <div>
+                    <h4>{{ row.store.name }}</h4>
+                    <p>{{ row.store.city.name }}{% if row.store.area %}, {{ row.store.area.name }}{% endif %}</p>
+                </div>
+                <span class="{% if row.store.is_active %}status-badge{% else %}status-critical{% endif %}">
+                    {% if row.store.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+            </div>
+
+            <div class="store-card-meta">
+                <div class="store-meta-item">
+                    <span class="store-meta-label">Address</span>
+                    <strong>{{ row.store.address|default:"No address added" }}</strong>
+                </div>
+                <div class="store-meta-item">
+                    <span class="store-meta-label">Contact</span>
+                    <strong>{{ row.store.phone|default:"No phone" }}</strong>
+                    <small>{{ row.store.email|default:"No email" }}</small>
+                </div>
+            </div>
+
+            <div class="store-section">
+                <div class="store-section-header">
+                    <h5>Assigned Pharmacists</h5>
+                </div>
+                <div class="store-staff-list">
+                    {% for pharmacist in row.store.staff.all %}
+                    <div class="staff-chip">
+                        <div class="staff-chip-copy">
+                            <strong>{{ pharmacist.full_name }}</strong>
+                            <small>{{ pharmacist.email }}</small>
+                        </div>
+                        <form method="post" action="{% url 'remove_store_staff' row.store.id pharmacist.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">Remove</button>
+                        </form>
+                    </div>
+                    {% empty %}
+                    <div class="store-empty-note">No pharmacist assigned yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="store-section">
+                <div class="store-section-header">
+                    <h5>Assign Pharmacist</h5>
+                </div>
+                <form method="post" action="{% url 'assign_store_staff' row.store.id %}" class="store-inline-form">
+                    {% csrf_token %}
+                    {{ row.assignment_form.pharmacist }}
+                    <button type="submit" class="btn btn-consult">Assign</button>
+                </form>
+            </div>
+
+            <details class="store-edit-panel">
+                <summary>Edit Store</summary>
+                <form method="post" action="{% url 'edit_store' row.store.id %}" class="store-edit-form">
+                    {% csrf_token %}
+                    <div class="form-grid">
+                        {% for field in row.edit_form %}
+                        <div class="form-group {% if field.name == 'address' %}full-width{% endif %}">
+                            <label>{{ field.label }}</label>
+                            {% if field.name == "area" %}
+                            <select name="{{ field.html_name }}" id="{{ field.id_for_label }}">
+                                <option value="">Select Area</option>
+                                {% for area in field.field.queryset %}
+                                <option value="{{ area.id }}"
+                                        data-city-id="{{ area.city_id }}"
+                                        {% if field.value|stringformat:"s" == area.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ area.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% else %}
+                            {{ field }}
+                            {% endif %}
+                            {% if field.errors %}
+                            <small>{{ field.errors|join:", " }}</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="store-action-row">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </details>
+
+            <form method="post" action="{% url 'delete_store' row.store.id %}" class="store-delete-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Delete Store</button>
+            </form>
+        </article>
+        {% empty %}
+        <div class="store-empty-state">No stores created yet.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+
+<script>
+function syncAreaOptions(citySelect, areaSelect, placeholderText) {
+    if (!citySelect || !areaSelect) return;
+
+    const selectedCity = citySelect.value;
+    const allOptions = Array.from(areaSelect.querySelectorAll("option"));
+
+    allOptions.forEach(option => {
+        if (!option.value) {
+            option.hidden = false;
+            return;
+        }
+
+        const matches = !selectedCity || option.dataset.cityId === selectedCity;
+        option.hidden = !matches;
+
+        if (!matches && option.selected) {
+            areaSelect.value = "";
+        }
+    });
+
+    if (!areaSelect.value) {
+        areaSelect.options[0].text = placeholderText;
+    }
+}
+
+function wireCityAreaPair(citySelect, areaSelect, placeholderText) {
+    if (!citySelect || !areaSelect) return;
+    syncAreaOptions(citySelect, areaSelect, placeholderText);
+    citySelect.addEventListener("change", function () {
+        syncAreaOptions(citySelect, areaSelect, placeholderText);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const filterCity = document.querySelector("[data-store-city-filter]");
+    const filterArea = document.querySelector("[data-store-area-filter]");
+    wireCityAreaPair(filterCity, filterArea, "All Areas");
+
+    const citySelects = Array.from(document.querySelectorAll("select[name$='city']"))
+        .filter(select => !select.hasAttribute("data-store-city-filter"));
+
+    citySelects.forEach(citySelect => {
+        const areaName = citySelect.name.replace(/city$/, "area");
+        const areaSelect = document.querySelector(`select[name='${areaName}']`);
+        wireCityAreaPair(citySelect, areaSelect, "Select Area");
+    });
+});
+</script>
+{% endblock %}

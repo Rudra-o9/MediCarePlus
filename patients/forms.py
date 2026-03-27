@@ -11,6 +11,7 @@ class PatientForm(forms.ModelForm):
             'gender',
             'phone',
             'city',
+            'area',
             'address',
             'medical_history',
         ]

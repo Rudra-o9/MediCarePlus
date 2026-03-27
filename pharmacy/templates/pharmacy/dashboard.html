@@ -3,188 +3,199 @@
 {% block page_title %}Pharmacist Dashboard{% endblock %}
 
 {% block sidebar %}
-
+<a href="{% url 'pharmacist_dashboard' %}" class="active">Dashboard</a>
 <a href="{% url 'billing:prescription_queue' %}">Prescriptions</a>
 <a href="{% url 'billing:invoice_list' %}">Invoices</a>
-
-<a href="{% url 'medicine_list' %}" class="active">Medicines</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
 <a href="{% url 'low_stock_medicines' %}">Low Stock</a>
 <a href="{% url 'near_expiry_batches' %}">Near Expiry</a>
 <a href="{% url 'expired_batches' %}">Expired</a>
-
 <a href="{% url 'billing:sales_report' %}">Sales Report</a>
-
-
-
 {% endblock %}
 
 {% block content %}
+<div class="admin-hero">
+    <section class="admin-hero-main">
+        <p class="admin-kicker">Store Billing Command</p>
+        <h1 class="hero-amount">Rs. {{ total_revenue }}</h1>
+        <p class="admin-hero-copy">
+            Track prescription intake, invoice activity, revenue movement, and inventory pressure from one pharmacist workspace.
+        </p>
+        <div class="sales-scope-chip pharmacist-store-chip">
+            <strong>{% if no_store_assigned %}Store Assignment Needed{% else %}Active Store{% endif %}</strong>
+            <span>
+                {% if current_store %}
+                {{ current_store.name }}{% if current_store.city %} · {{ current_store.city.name }}{% endif %}{% if current_store.area %}, {{ current_store.area.name }}{% endif %}
+                {% else %}
+                Ask an admin to assign this pharmacist to an active store.
+                {% endif %}
+            </span>
+        </div>
+        <div class="admin-hero-actions">
+            <a href="{% url 'billing:prescription_queue' %}" class="btn btn-success">Open Prescriptions</a>
+            <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary">Review Invoices</a>
+            <a href="{% url 'low_stock_medicines' %}" class="btn btn-secondary">Watch Low Stock</a>
+        </div>
+    </section>
 
-<!-- HERO CARD -->
-<div class="hero-card">
-    <div>
-        <p class="hero-label">Total Revenue</p>
-        <h1 class="hero-amount">
-        ₹ <span id="revenueCounter" data-target="{{ total_revenue }}">0</span>
-        </h1>
-    </div>
+    <aside class="admin-hero-side">
+        <div class="hero-side-card hero-side-highlight">
+            <p class="hero-side-label">Revenue Trend</p>
+            <strong>Monthly Growth</strong>
+            <p>
+                {% if monthly_growth >= 0 %}
+                Up {{ monthly_growth|floatformat:1 }}%
+                {% else %}
+                Down {{ monthly_growth|floatformat:1|cut:"-" }}%
+                {% endif %}
+            </p>
+        </div>
+        <div class="hero-side-grid">
+            <div class="hero-side-card">
+                <p class="hero-side-label">Top Medicine</p>
+                <strong>{{ most_profitable }}</strong>
+            </div>
+            <div class="hero-side-card">
+                <p class="hero-side-label">Stock Value</p>
+                <strong>Rs. {{ stock_value }}</strong>
+            </div>
+        </div>
+    </aside>
 </div>
 
-<!-- STATS CARDS -->
 <div class="dashboard-grid small-cards">
-
-    <div class="dashboard-card card-blue">
+    <div class="dashboard-card card-teal">
         <h3>Total Medicines</h3>
-        <p class="counter" data-target="{{ total_medicines }}">0</p>
+        <p>{{ total_medicines }}</p>
     </div>
-
-    <div class="dashboard-card card-yellow">
+    <div class="dashboard-card card-green">
         <h3>Low Stock</h3>
-        <p class="counter" data-target="{{ low_stock_count }}">0</p>
+        <p>{{ low_stock_count }}</p>
     </div>
-
-    <div class="dashboard-card card-orange">
+    <div class="dashboard-card card-purple">
         <h3>Near Expiry</h3>
-        <p class="counter" data-target="{{ near_expiry_count }}">0</p>
+        <p>{{ near_expiry_count }}</p>
+    </div>
+    <div class="dashboard-card">
+        <h3>Expired Batches</h3>
+        <p>{{ expired_count }}</p>
+    </div>
+</div>
+
+<div class="quick-action-grid pharmacist-focus-grid">
+    <a href="{% url 'billing:prescription_queue' %}" class="quick-action-tile">
+        <strong>Prescription Queue</strong>
+        <span>{{ pending_prescription_count }} waiting for billing in your active store.</span>
+    </a>
+    <a href="{% url 'billing:invoice_list' %}" class="quick-action-tile">
+        <strong>Draft Invoices</strong>
+        <span>{{ draft_invoice_count }} draft invoice{{ draft_invoice_count|pluralize }} currently open for collection.</span>
+    </a>
+    <a href="{% url 'billing:sales_report' %}" class="quick-action-tile">
+        <strong>Paid Invoice History</strong>
+        <span>{{ paid_invoice_count }} paid invoice{{ paid_invoice_count|pluralize }} available for review and reporting.</span>
+    </a>
+    <a href="{% url 'near_expiry_batches' %}" class="quick-action-tile">
+        <strong>Inventory Watchlist</strong>
+        <span>{{ low_stock_count }} low stock and {{ near_expiry_count }} near-expiry lines need attention.</span>
+    </a>
+</div>
+
+{% if no_store_assigned %}
+<div class="chart-card">
+    <div class="approval-empty-state">
+        <strong>This pharmacist account is not connected to an active store yet.</strong>
+        <p>Prescriptions, invoices, and sales activity are store-scoped. Assign this pharmacist to an active store from Store Management so the dashboard starts reflecting real queue and billing data.</p>
+    </div>
+</div>
+{% endif %}
+
+<div class="chart-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Performance</span>
+            <h3>Revenue and Sales Signals</h3>
+            <p>Use the charts below to monitor recent revenue movement, top medicines, and category performance before restocking or billing more prescriptions.</p>
+        </div>
     </div>
 
-    <div class="dashboard-card card-red">
-        <h3>Expired</h3>
-        <p class="counter" data-target="{{ expired_count }}">0</p>
+    <div class="admin-two-column">
+        <div class="chart-card">
+            <h3>Revenue - Last 7 Days</h3>
+            {% if has_trend_data %}
+            <div class="dashboard-chart-shell">
+                <canvas id="revenueTrendChart"></canvas>
+            </div>
+            {% else %}
+            <p>No sales data available.</p>
+            {% endif %}
+        </div>
+
+        <div class="chart-card">
+            <h3>Top Selling Medicines</h3>
+            {% if has_top_medicine_data %}
+            <div class="dashboard-chart-shell">
+                <canvas id="topChart"></canvas>
+            </div>
+            {% else %}
+            <p>No medicine sales data available.</p>
+            {% endif %}
+        </div>
     </div>
 
-</div>  
+    <div class="admin-two-column">
+        <div class="chart-card">
+            <div class="section-heading">
+                <div>
+                    <h3>Monthly Profit Trend</h3>
+                </div>
+                <form method="get">
+                    <select name="period" onchange="this.form.submit()" class="period-select">
+                        <option value="6" {% if selected_period == 6 %}selected{% endif %}>Last 6 Months</option>
+                        <option value="12" {% if selected_period == 12 %}selected{% endif %}>Last 12 Months</option>
+                        <option value="24" {% if selected_period == 24 %}selected{% endif %}>Last 24 Months</option>
+                    </select>
+                </form>
+            </div>
+            <div class="dashboard-chart-shell">
+                <canvas id="profitTrendChart"></canvas>
+            </div>
+        </div>
 
-<div class="dashboard-grid small-cards">
+        <div class="chart-card">
+            <h3>Sales by Medicine Category</h3>
+            {% if has_category_data %}
+            <div class="dashboard-chart-shell dashboard-chart-shell-compact">
+                <canvas id="categoryChart"></canvas>
+            </div>
+            {% else %}
+            <p>No category sales data available.</p>
+            {% endif %}
+        </div>
+    </div>
 
-<div class="dashboard-card card-green">
-<h3>Monthly Growth</h3>
-
-<p style="font-size:28px;">
-
-{% if monthly_growth >= 0 %}
-<span style="color:#00e676;">▲ {{ monthly_growth }}%</span>
-{% else %}
-<span style="color:#ff5252;">▼ {{ monthly_growth|floatformat:1 }}%</span>
-{% endif %}
-
-</p>
-
+    <div class="chart-card">
+        <h3>Top 5 Medicines Sold Today</h3>
+        {% if has_today_top_data %}
+        <div class="dashboard-chart-shell">
+            <canvas id="todayChart"></canvas>
+        </div>
+        {% else %}
+        <p>No medicine sales recorded today.</p>
+        {% endif %}
+    </div>
 </div>
-
-<div class="dashboard-card card-purple">
-<h3>Top Medicine</h3>
-<p style="font-size:22px;">{{ most_profitable }}</p>
-</div>
-
-<div class="dashboard-card card-teal">
-<h3>Stock Value</h3>
-<p style="font-size:28px;">₹ {{ stock_value }}</p>
-</div>
-
-</div>
-
-
-
-<!-- CHARTS -->
-<div class="chart-grid">
-
-<!-- Revenue Trend -->
-<div class="chart-card">
-<h3>Revenue - Last 7 Days</h3>
-
-{% if trend_values_json %}
-<canvas id="revenueTrendChart"></canvas>
-{% else %}
-<p>No sales data available.</p>
-{% endif %}
-
-</div>
-
-
-<!-- Top Medicines -->
-<div class="chart-card">
-<h3>Top Selling Medicines</h3>
-
-{% if top_values_json %}
-<canvas id="topChart"></canvas>
-{% else %}
-<p>No medicine sales data available.</p>
-{% endif %}
-
-</div>
-
-
-<!-- Monthly Profit -->
-<div class="chart-card">
-
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-
-<h3>Monthly Profit Trend</h3>
-
-<form method="get">
-<select name="period" onchange="this.form.submit()" class="period-select">
-
-<option value="6" {% if selected_period == 6 %}selected{% endif %}>
-Last 6 Months
-</option>
-
-<option value="12" {% if selected_period == 12 %}selected{% endif %}>
-Last 12 Months
-</option>
-
-<option value="24" {% if selected_period == 24 %}selected{% endif %}>
-Last 24 Months
-</option>
-
-</select>
-</form>
-
-</div>
-
-<div class="chart-card">
-
-<h3>Sales by Medicine Category</h3>
-
-<canvas id="categoryChart"></canvas>
-
-</div>
-
-<canvas id="profitTrendChart"></canvas>
-
-</div>
-
-<div class="chart-card">
-
-<h3>Top 5 Medicines Sold Today</h3>
-
-<canvas id="todayChart"></canvas>
-
-</div>
-
 {% endblock %}
 
-
-
 {% block extra_js %}
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-
 document.addEventListener("DOMContentLoaded", function () {
-
-    /* ---------------------- TOP MEDICINES CHART ---------------------- */
-
     const topLabels = JSON.parse('{{ top_labels_json|escapejs }}' || "[]");
     const topValues = JSON.parse('{{ top_values_json|escapejs }}' || "[]");
-
     if (topLabels.length > 0) {
-
-        new Chart(document.getElementById('topChart'), {
-
-            type: 'bar',
-
+        new Chart(document.getElementById("topChart"), {
+            type: "bar",
             data: {
                 labels: topLabels,
                 datasets: [{
@@ -193,364 +204,153 @@ document.addEventListener("DOMContentLoaded", function () {
                     backgroundColor: "#4da3ff"
                 }]
             },
-
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { display: false }
-                },
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
                 scales: {
-                    x: {
-                        grid: { display:false },
-                        ticks:{ color:"#bbb" }
-                    },
-                    y: {
-                        grid:{ color:"rgba(255,255,255,0.05)" },
-                        ticks:{ color:"#bbb" }
-                    }
+                    x: { grid: { display: false }, ticks: { color: "#bbb" } },
+                    y: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#bbb" } }
                 }
             }
-
         });
-
     }
-
-
-
-    /* ---------------------- REVENUE TREND CHART ---------------------- */
 
     const trendLabels = JSON.parse('{{ trend_labels_json|escapejs }}' || "[]");
     const trendValues = JSON.parse('{{ trend_values_json|escapejs }}' || "[]");
-
-    const trendCanvas = document.getElementById('revenueTrendChart');
-
+    const trendCanvas = document.getElementById("revenueTrendChart");
     if (trendCanvas && trendLabels.length > 0) {
-
-        const ctx = trendCanvas.getContext('2d');
-
-        const gradient = ctx.createLinearGradient(0,0,0,400);
-        gradient.addColorStop(0,"rgba(0,230,118,0.35)");
-        gradient.addColorStop(1,"rgba(0,230,118,0)");
-
+        const ctx = trendCanvas.getContext("2d");
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, "rgba(0,230,118,0.35)");
+        gradient.addColorStop(1, "rgba(0,230,118,0)");
         new Chart(trendCanvas, {
-
-            type:'line',
-
-            data:{
-                labels:trendLabels,
-                datasets:[{
-                    data:trendValues,
-                    borderColor:"#00e676",
-                    backgroundColor:gradient,
-                    borderWidth:3,
-                    tension:0.4,
-                    fill:true,
-                    pointRadius:4
+            type: "line",
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    data: trendValues,
+                    borderColor: "#00e676",
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4
                 }]
             },
-
-            options:{
-                responsive:true,
-                plugins:{ legend:{display:false} },
-                scales:{
-                    x:{
-                        grid:{display:false},
-                        ticks:{color:"#bbb"}
-                    },
-                    y:{
-                        grid:{color:"rgba(255,255,255,0.05)"},
-                        ticks:{color:"#bbb"}
-                    }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: "#bbb" } },
+                    y: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#bbb" } }
                 }
             }
-
         });
-
     }
-
-
-
-    /* ---------------------- MONTHLY PROFIT CHART ---------------------- */
-
 
     const profitLabels = JSON.parse('{{ profit_labels_json|default:"[]"|escapejs }}');
     const profitValues = JSON.parse('{{ profit_values_json|default:"[]"|escapejs }}');
     const revenueValues = JSON.parse('{{ revenue_values_json|default:"[]"|escapejs }}');
-
     const profitCanvas = document.getElementById("profitTrendChart");
-
     if (profitCanvas && profitLabels.length > 0) {
-
-    const ctx = profitCanvas.getContext('2d');
-
-    const revenueGradient = ctx.createLinearGradient(0,0,0,400);
-    revenueGradient.addColorStop(0,"rgba(0,230,118,0.35)");
-    revenueGradient.addColorStop(1,"rgba(0,230,118,0)");
-
-    const profitGradient = ctx.createLinearGradient(0,0,0,400);
-    profitGradient.addColorStop(0,"rgba(77,163,255,0.35)");
-    profitGradient.addColorStop(1,"rgba(77,163,255,0)");
-
-    new Chart(profitCanvas,{
-
-    type:"line",
-
-    data:{
-    labels:profitLabels,
-
-    datasets:[
-
-    {
-    label:"Revenue",
-    data:revenueValues,
-    borderColor:"#00e676",
-    backgroundColor:revenueGradient,
-    borderWidth:4,
-    tension:0.45,
-    fill:true,
-    pointRadius:6,
-    pointBackgroundColor:"#00e676"
-    },
-
-    {
-    label:"Profit",
-    data:profitValues,
-    borderColor:"#4da3ff",
-    backgroundColor:profitGradient,
-    borderWidth:4,
-    tension:0.45,
-    fill:true,
-    pointRadius:6,
-    pointBackgroundColor:"#4da3ff"
+        const ctx = profitCanvas.getContext("2d");
+        const revenueGradient = ctx.createLinearGradient(0, 0, 0, 400);
+        revenueGradient.addColorStop(0, "rgba(0,230,118,0.35)");
+        revenueGradient.addColorStop(1, "rgba(0,230,118,0)");
+        const profitGradient = ctx.createLinearGradient(0, 0, 0, 400);
+        profitGradient.addColorStop(0, "rgba(77,163,255,0.35)");
+        profitGradient.addColorStop(1, "rgba(77,163,255,0)");
+        new Chart(profitCanvas, {
+            type: "line",
+            data: {
+                labels: profitLabels,
+                datasets: [
+                    {
+                        label: "Revenue",
+                        data: revenueValues,
+                        borderColor: "#00e676",
+                        backgroundColor: revenueGradient,
+                        borderWidth: 4,
+                        tension: 0.45,
+                        fill: true,
+                        pointRadius: 6,
+                        pointBackgroundColor: "#00e676"
+                    },
+                    {
+                        label: "Profit",
+                        data: profitValues,
+                        borderColor: "#4da3ff",
+                        backgroundColor: profitGradient,
+                        borderWidth: 4,
+                        tension: 0.45,
+                        fill: true,
+                        pointRadius: 6,
+                        pointBackgroundColor: "#4da3ff"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: "#ddd" } } },
+                scales: {
+                    x: { ticks: { color: "#bbb" }, grid: { display: false } },
+                    y: { ticks: { color: "#bbb" }, grid: { color: "rgba(255,255,255,0.05)" } }
+                }
+            }
+        });
     }
 
-    ]
-    },
-
-    options:{
-    responsive:true,
-
-    plugins:{
-    legend:{
-    position:"top",
-    align:"center",
-    labels:{
-    color:"#bbb",
-    boxWidth:30
+    const categoryLabels = JSON.parse('{{ category_labels_json|default:"[]"|escapejs }}');
+    const categoryValues = JSON.parse('{{ category_values_json|default:"[]"|escapejs }}');
+    const categoryCanvas = document.getElementById("categoryChart");
+    if (categoryCanvas && categoryLabels.length > 0) {
+        new Chart(categoryCanvas, {
+            type: "doughnut",
+            data: {
+                labels: categoryLabels,
+                datasets: [{
+                    data: categoryValues,
+                    backgroundColor: ["#00e676", "#4da3ff", "#ffd54f", "#ab47bc", "#ff7043", "#26c6da"],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: "#ddd" } } }
+            }
+        });
     }
-    }
-    },
-
-    scales:{
-
-    x:{
-    grid:{display:false},
-    ticks:{color:"#bbb"}
-    },
-
-    y:{
-    grid:{color:"rgba(255,255,255,0.05)"},
-    ticks:{color:"#bbb"}
-    }
-
-    }
-
-    }
-
-    });
-
-    }
-
-    /* ---------------------- SALES BY CATEGORY CHART ---------------------- */
-
-    const catLabels = JSON.parse('{{ category_labels_json|default:"[]"|escapejs }}');
-    const catValues = JSON.parse('{{ category_values_json|default:"[]"|escapejs }}');
-
-    const catCanvas = document.getElementById("categoryChart");
-
-    if (catCanvas && catLabels.length > 0) {
-
-    new Chart(catCanvas,{
-
-    type:"bar",
-
-    data:{
-    labels:catLabels,
-    datasets:[{
-    data:catValues,
-    backgroundColor:[
-    "#00e676",
-    "#4da3ff",
-    "#ffb300",
-    "#ab47bc",
-    "#26c6da"
-    ],
-    borderRadius:8
-    }]
-    },
-
-    options:{
-    responsive:true,
-    plugins:{
-    legend:{display:false}
-    },
-
-    scales:{
-    x:{
-    grid:{display:false},
-    ticks:{color:"#bbb"}
-    },
-
-    y:{
-    grid:{color:"rgba(255,255,255,0.05)"},
-    ticks:{color:"#bbb"}
-    }
-    }
-
-    }
-
-    });
-
-    }
-
-    /* ---------------------- TOP MEDICINES TODAY CHART ---------------------- */
 
     const todayLabels = JSON.parse('{{ top_today_labels_json|default:"[]"|escapejs }}');
     const todayValues = JSON.parse('{{ top_today_values_json|default:"[]"|escapejs }}');
-
     const todayCanvas = document.getElementById("todayChart");
-
     if (todayCanvas && todayLabels.length > 0) {
-
-    new Chart(todayCanvas,{
-
-    type:"bar",
-
-    data:{
-    labels:todayLabels,
-    datasets:[{
-    data:todayValues,
-    backgroundColor:"#00e676",
-    borderRadius:8
-    }]
-    },
-
-    options:{
-    responsive:true,
-    plugins:{legend:{display:false}},
-
-    scales:{
-    x:{
-    grid:{display:false},
-    ticks:{color:"#bbb"}
-    },
-    y:{
-    grid:{color:"rgba(255,255,255,0.05)"},
-    ticks:{color:"#bbb"}
+        new Chart(todayCanvas, {
+            type: "bar",
+            data: {
+                labels: todayLabels,
+                datasets: [{
+                    label: "Units Sold",
+                    data: todayValues,
+                    backgroundColor: "#26c6da",
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: "#ddd" } } },
+                scales: {
+                    x: { ticks: { color: "#bbb" }, grid: { display: false } },
+                    y: { ticks: { color: "#bbb" }, grid: { color: "rgba(255,255,255,0.05)" } }
+                }
+            }
+        });
     }
-    }
-
-    }
-
-    });
-
-    }
-
-    /* ---------------------- REVENUE COUNTER ANIMATION ---------------------- */
-
-    const revenueCounter = document.getElementById("revenueCounter");
-
-    if(revenueCounter){
-
-    let target = parseFloat(revenueCounter.dataset.target);
-    let current = 0;
-
-    const updateRevenue = () => {
-
-    let increment = target / 60;
-
-    if(current < target){
-
-    current += increment;
-    revenueCounter.innerText = current.toFixed(2);
-
-    requestAnimationFrame(updateRevenue);
-
-    }else{
-
-    revenueCounter.innerText = target.toFixed(2);
-
-    }
-
-    };
-
-    updateRevenue();
-
-    }
-
 });
 </script>
-
-
-
-<!-- COUNTER ANIMATION -->
-
-<script>
-
-document.querySelectorAll('.counter').forEach(counter => {
-
-    const target = +counter.getAttribute('data-target');
-
-    let count = 0;
-
-    const speed = 20;
-
-    const update = () => {
-
-        const increment = target / 40;
-
-        if (count < target) {
-
-            count += increment;
-
-            counter.innerText = Math.ceil(count);
-
-            setTimeout(update, speed);
-
-        } else {
-
-            counter.innerText = target;
-
-        }
-
-    };
-
-    update();
-
-    // LIVE SALES UPDATER
-
-    setInterval(function(){
-
-    fetch("/accounts/api/live-sales/")
-
-    .then(response => response.json())
-
-    .then(data => {
-
-    const revenueElement = document.getElementById("revenueCounter");
-
-    if(revenueElement){
-
-    revenueElement.innerText = parseFloat(data.today_revenue).toFixed(2);
-
-    }
-
-    });
-
-    }, 5000);
-
-});
-
-</script>
-
 {% endblock %}

@@ -1,60 +1,43 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
 <title>MediCarePlus</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 
 <script src="{% static 'js/chart.js' %}"></script>
-
 </head>
 
 <body>
 
 <div class="dashboard-wrapper">
 
-<!-- SIDEBAR -->
-
 <aside class="sidebar">
-
+<div>
 <div class="sidebar-logo">
 <span class="logo-dot"></span>
 MediCarePlus
 </div>
 
 <nav class="sidebar-nav">
-
 {% block sidebar %}
-<!-- Each page will override sidebar -->
 {% endblock %}
-
 </nav>
+</div>
 
 <div class="sidebar-footer">
-
 <a href="{% url 'logout' %}" class="logout-btn">
 Logout
 </a>
-
 </div>
-
 </aside>
 
-
-<!-- MAIN CONTENT -->
-
 <main class="main-content">
-
 <header class="topbar">
-
 <div class="topbar-left">
-
 <h2 class="page-title">
 {% block page_title %}Dashboard{% endblock %}
 </h2>
@@ -62,91 +45,121 @@ Logout
 <p class="page-subtitle">
 Welcome back, {{ user.full_name }}
 </p>
-
 </div>
 
-<div class="notification-panel">
+<div class="notification-menu" id="notificationMenu">
+<button type="button" class="notification-trigger" id="notificationTrigger" aria-expanded="false" aria-controls="notificationPanel">
+<span class="notification-trigger-icon">!</span>
+<span class="notification-trigger-copy">
+<strong>Alerts</strong>
+<small>Latest updates</small>
+</span>
+<span class="notification-count" id="notificationCount">0</span>
+</button>
 
-<span>🔔</span>
+<div class="notification-panel" id="notificationPanel">
+<div class="notification-header">
+<div class="notification-title">
+<span class="notification-icon">!</span>
+<span>Latest Alerts</span>
+</div>
+<span class="notification-badge">Live</span>
+</div>
 
 <ul id="notificationList">
 <li>Loading...</li>
 </ul>
-
 </div>
-
+</div>
 </header>
 
-
 <section class="content-area">
-
 {% block content %}
 {% endblock %}
-
 </section>
-
 </main>
-
 </div>
 
-
 {% block extra_js %}
-
 <script>
-
 function updateRevenue(){
-
 fetch("/api/live-sales/", {
 credentials: "same-origin"
 })
 .then(res => res.json())
 .then(data => {
-
 const revenue = document.querySelector("#todayRevenue");
-
 if(revenue){
-revenue.innerText = "₹ " + data.today_revenue.toFixed(2);
+revenue.innerText = "Rs. " + data.today_revenue.toFixed(2);
 }
-
 });
-
 }
 
 setInterval(updateRevenue, 5000);
 
+const notificationMenu = document.querySelector("#notificationMenu");
+const notificationTrigger = document.querySelector("#notificationTrigger");
+const notificationPanel = document.querySelector("#notificationPanel");
+const notificationCount = document.querySelector("#notificationCount");
+
+function toggleNotifications(forceOpen){
+if(!notificationMenu || !notificationTrigger) return;
+const willOpen = typeof forceOpen === "boolean" ? forceOpen : !notificationMenu.classList.contains("open");
+notificationMenu.classList.toggle("open", willOpen);
+notificationTrigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+}
+
+if(notificationTrigger){
+notificationTrigger.addEventListener("click", function(event){
+event.stopPropagation();
+toggleNotifications();
+});
+}
+
+document.addEventListener("click", function(event){
+if(notificationMenu && !notificationMenu.contains(event.target)){
+toggleNotifications(false);
+}
+});
 
 function loadNotifications(){
-
 fetch("/core/notifications/")
 .then(res => res.json())
 .then(data => {
-
 const list = document.querySelector("#notificationList");
-
 if(!list) return;
 
 list.innerHTML = "";
+if(notificationCount){
+notificationCount.innerText = data.notifications.length;
+}
+
+if(!data.notifications.length){
+const li = document.createElement("li");
+li.innerText = "No new alerts right now.";
+list.appendChild(li);
+return;
+}
 
 data.notifications.forEach(n => {
-
 const li = document.createElement("li");
-
-li.innerText = "🔔 " + n.title;
-
+li.innerHTML = `
+<div class="notification-item">
+<div class="notification-copy">
+<strong>${n.title}</strong>
+<span>${n.message || "Recent system update"}</span>
+</div>
+<span class="notification-time">${n.time}</span>
+</div>
+`;
 list.appendChild(li);
-
 });
-
 });
-
 }
 
 setInterval(loadNotifications, 5000);
-
 loadNotifications();
-
 </script>
-
 {% endblock %}
 
 </body>

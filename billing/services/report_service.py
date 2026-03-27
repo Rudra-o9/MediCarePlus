@@ -1,6 +1,8 @@
+"""Reporting and analytics queries used by dashboards and report pages."""
+
 from django.db.models import Sum, F
 from django.utils import timezone
-from django.db.models.functions import TruncDate, TruncMonth
+from django.db.models.functions import TruncMonth
 from datetime import timedelta, datetime
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
@@ -9,6 +11,7 @@ from billing.models import Invoice, InvoiceItem, InvoiceItemBatch
 
 
 class ReportService:
+    """Central place for revenue, stock, sales, and profit analytics."""
 
     # =========================
     # BASIC REVENUE REPORTS
@@ -16,6 +19,7 @@ class ReportService:
 
     @staticmethod
     def total_revenue():
+        """Total paid revenue across all invoices."""
         return (
             Invoice.objects
             .filter(status="PAID")
@@ -25,7 +29,8 @@ class ReportService:
 
     @staticmethod
     def today_revenue():
-        today = timezone.now().date()
+        """Revenue for the current business day."""
+        today = timezone.localdate()
         start = timezone.make_aware(
             timezone.datetime.combine(today, timezone.datetime.min.time())
         )
@@ -44,7 +49,8 @@ class ReportService:
 
     @staticmethod
     def today_sales_count():
-        today = timezone.now().date()
+        """Number of paid invoices for the current day."""
+        today = timezone.localdate()
         start = timezone.make_aware(
             timezone.datetime.combine(today, timezone.datetime.min.time())
         )
@@ -62,13 +68,30 @@ class ReportService:
 
     @staticmethod
     def monthly_revenue():
-        now = timezone.now()
+        """Revenue inside the current calendar month."""
+        today = timezone.localdate()
+        start = timezone.make_aware(
+            timezone.datetime.combine(
+                today.replace(day=1),
+                timezone.datetime.min.time()
+            )
+        )
+        if today.month == 12:
+            next_month = today.replace(year=today.year + 1, month=1, day=1)
+        else:
+            next_month = today.replace(month=today.month + 1, day=1)
+        end = timezone.make_aware(
+            timezone.datetime.combine(
+                next_month,
+                timezone.datetime.min.time()
+            )
+        )
         return (
             Invoice.objects
             .filter(
                 status="PAID",
-                created_at__year=now.year,
-                created_at__month=now.month
+                created_at__gte=start,
+                created_at__lt=end
             )
             .aggregate(total=Sum("total_amount"))["total"]
             or Decimal("0.00")
@@ -76,25 +99,13 @@ class ReportService:
 
     @staticmethod
     def last_7_days_revenue():
-        today = timezone.now().date()
+        """Revenue time series for the last 7 days.
+
+        This uses simple day-by-day windows instead of heavy grouping because it
+        is more reliable across MySQL date/time behavior.
+        """
+        today = timezone.localdate()
         start_date = today - timedelta(days=6)
-
-        data = (
-            Invoice.objects
-            .filter(
-                status="PAID",
-                created_at__date__gte=start_date
-            )
-            .annotate(day=TruncDate("created_at"))
-            .values("day")
-            .annotate(total=Sum("total_amount"))
-            .order_by("day")
-        )
-
-        revenue_map = {
-            entry["day"]: entry["total"]
-            for entry in data
-        }
 
         labels = []
         values = []
@@ -102,15 +113,34 @@ class ReportService:
         for i in range(7):
             day = start_date + timedelta(days=i)
             labels.append(day.strftime("%d %b"))
-            values.append(revenue_map.get(day, Decimal("0.00")))
+            start = timezone.make_aware(
+                timezone.datetime.combine(day, timezone.datetime.min.time())
+            )
+            end = start + timedelta(days=1)
+            total = (
+                Invoice.objects
+                .filter(
+                    status="PAID",
+                    created_at__gte=start,
+                    created_at__lt=end
+                )
+                .aggregate(total=Sum("total_amount"))["total"]
+                or Decimal("0.00")
+            )
+            values.append(total)
 
         return labels, values
 
     @staticmethod
-    def top_selling_medicines():
+    def top_selling_medicines(store=None):
+        """Most sold medicines based on paid invoice quantities."""
+        items = InvoiceItem.objects.filter(invoice__status="PAID")
+
+        if store:
+            items = items.filter(invoice__prescription__assigned_store=store)
+
         return (
-            InvoiceItem.objects
-            .filter(invoice__status="PAID")
+            items
             .values("prescription_item__medicine__name")
             .annotate(total_sold=Sum("quantity"))
             .order_by("-total_sold")[:5]
@@ -128,8 +158,11 @@ class ReportService:
         }
 
     @staticmethod
-    def sales_by_date_range(start_date=None, end_date=None):
+    def sales_by_date_range(start_date=None, end_date=None, store=None):
         invoices = Invoice.objects.filter(status="PAID")
+
+        if store:
+            invoices = invoices.filter(prescription__assigned_store=store)
 
         if start_date:
             invoices = invoices.filter(created_at__date__gte=start_date)
@@ -151,7 +184,8 @@ class ReportService:
     # =========================
 
     @staticmethod
-    def medicine_profit_report(start_date=None, end_date=None):
+    def medicine_profit_report(start_date=None, end_date=None, store=None):
+        """Per-medicine revenue/cost/profit report from actual batch allocations."""
 
         allocations = InvoiceItemBatch.objects.filter(
             invoice_item__invoice__status="PAID"
@@ -161,14 +195,25 @@ class ReportService:
             "invoice_item__medicine"
         )
 
-        if start_date:
+        if store:
             allocations = allocations.filter(
-                invoice_item__invoice__created_at__date__gte=start_date
+                invoice_item__invoice__prescription__assigned_store=store
+            )
+
+        if start_date:
+            start_dt = timezone.make_aware(
+                timezone.datetime.combine(start_date, timezone.datetime.min.time())
+            )
+            allocations = allocations.filter(
+                invoice_item__invoice__created_at__gte=start_dt
             )
 
         if end_date:
+            end_dt = timezone.make_aware(
+                timezone.datetime.combine(end_date, timezone.datetime.min.time())
+            ) + timedelta(days=1)
             allocations = allocations.filter(
-                invoice_item__invoice__created_at__date__lte=end_date
+                invoice_item__invoice__created_at__lt=end_dt
             )
 
         report = {}
@@ -233,6 +278,7 @@ class ReportService:
 
     @staticmethod
     def monthly_profit_trend(months=6):
+        """Monthly revenue/profit trend used on dashboards."""
 
         today = datetime.today()
         start_date = today - relativedelta(months=months-1)
@@ -279,6 +325,7 @@ class ReportService:
 
     @staticmethod
     def dashboard_analytics():
+        """High-level dashboard KPIs: stock value, top medicine, growth."""
 
         from billing.models import InvoiceItem
         from pharmacy.models import Batch
@@ -304,7 +351,7 @@ class ReportService:
         from django.utils import timezone
         from datetime import timedelta
 
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         this_month = today.replace(day=1)
         last_month = (this_month - timedelta(days=1)).replace(day=1)
@@ -334,6 +381,7 @@ class ReportService:
     
     @staticmethod
     def sales_by_category():
+        """Category-wise sales totals."""
 
         from billing.models import InvoiceItem
 
@@ -355,10 +403,11 @@ class ReportService:
 
     @staticmethod
     def top_medicines_today():
+        """Top medicines sold today."""
 
         from billing.models import InvoiceItem
 
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         sales = (
             InvoiceItem.objects
@@ -379,6 +428,7 @@ class ReportService:
     
     @staticmethod
     def dead_stock(days=60):
+        """Medicines with stock that have not sold within the cutoff period."""
 
         from pharmacy.models import Medicine
         from billing.models import InvoiceItem
@@ -400,6 +450,7 @@ class ReportService:
     
     @staticmethod
     def fast_moving_medicines():
+        """Top-selling medicines across paid invoices."""
 
         from billing.models import InvoiceItem
 
@@ -410,3 +461,56 @@ class ReportService:
             .annotate(total_sold=Sum("quantity"))
             .order_by("-total_sold")[:5]
         )
+
+    @staticmethod
+    def gst_summary(start_date=None, end_date=None, store=None):
+        """GST summary report using paid invoice item snapshots."""
+
+        items = InvoiceItem.objects.filter(invoice__status="PAID")
+
+        if start_date:
+            start_dt = timezone.make_aware(
+                timezone.datetime.combine(start_date, timezone.datetime.min.time())
+            )
+            items = items.filter(invoice__created_at__gte=start_dt)
+        if end_date:
+            end_dt = timezone.make_aware(
+                timezone.datetime.combine(end_date, timezone.datetime.min.time())
+            ) + timedelta(days=1)
+            items = items.filter(invoice__created_at__lt=end_dt)
+        if store:
+            items = items.filter(invoice__prescription__assigned_store=store)
+
+        rows = list(
+            items.values(
+                "medicine__name",
+                "medicine__hsn_code",
+                "gst_percentage_at_sale",
+            ).annotate(
+                quantity_sold=Sum("quantity"),
+                taxable_value=Sum("subtotal"),
+                cgst_total=Sum("cgst_amount"),
+                sgst_total=Sum("sgst_amount"),
+                gross_total=Sum("total_with_tax"),
+            ).order_by("medicine__name")
+        )
+
+        summary = items.aggregate(
+            taxable_value=Sum("subtotal"),
+            cgst_total=Sum("cgst_amount"),
+            sgst_total=Sum("sgst_amount"),
+            gross_total=Sum("total_with_tax"),
+        )
+
+        taxable_value = summary["taxable_value"] or Decimal("0.00")
+        cgst_total = summary["cgst_total"] or Decimal("0.00")
+        sgst_total = summary["sgst_total"] or Decimal("0.00")
+        gross_total = summary["gross_total"] or Decimal("0.00")
+
+        return rows, {
+            "taxable_value": taxable_value,
+            "cgst_total": cgst_total,
+            "sgst_total": sgst_total,
+            "total_gst": cgst_total + sgst_total,
+            "gross_total": gross_total,
+        }

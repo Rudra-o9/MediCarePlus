@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>MediCarePlus</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
@@ -28,32 +29,95 @@
 
 <section class="hero">
     <div class="hero-left">
+        <div class="hero-kicker">Clinic + Pharmacy Coordination Platform</div>
         <h1>
             The Future of <span>Digital Healthcare</span>
         </h1>
         <p>
-            Secure, seamless and intelligent medicine management.
-            Experience healthcare the premium way.
+            Connect doctors, patients, pharmacists, prescriptions, and store inventory
+            in one real-world workflow built for speed, visibility, and safer medicine dispensing.
         </p>
+
+        <div class="hero-highlights">
+            <div class="highlight-pill">Role-Based Dashboards</div>
+            <div class="highlight-pill">Store-Wise Stock Routing</div>
+            <div class="highlight-pill">GST Billing + Reports</div>
+        </div>
+
+        <div class="hero-feature-grid">
+            <div class="feature-card">
+                <div class="feature-label">Doctor Flow</div>
+                <h3>Prescribe with treatment context</h3>
+                <p>Review earlier visits, compare nearby stores, and route prescriptions where medicines are actually available.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-label">Pharmacy Flow</div>
+                <h3>Bill from live batch stock</h3>
+                <p>Dispense from store-owned FIFO batches, support partial fulfillment, and keep invoices tied to real stock movement.</p>
+            </div>
+        </div>
     </div>
 
     <div class="hero-right">
-        <div class="glass-card">
-            <h2>Smart. Secure. Reliable.</h2>
-            <p>
-                Manage prescriptions, connect with pharmacists,
-                and streamline medical records — all in one elegant platform.
-            </p>
+        <div class="hero-stack">
+            <div class="glass-card glass-card-main">
+                <div class="metric-row">
+                    <div>
+                        <span class="metric-label">Live Workflow</span>
+                        <h2>Smart. Secure. Reliable.</h2>
+                    </div>
+                    <span class="pulse-dot"></span>
+                </div>
+                <p>
+                    Manage prescriptions, connect with pharmacists, and streamline
+                    records in one elegant platform designed around real medical-store operations.
+                </p>
+
+                <div class="status-list">
+                    <div class="status-item">
+                        <span class="status-indicator ok"></span>
+                        <div>
+                            <strong>Prescription Routing</strong>
+                            <small>Doctors choose from ranked nearby stores</small>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator info"></span>
+                        <div>
+                            <strong>Inventory Intelligence</strong>
+                            <small>Low stock, expiry alerts, and live availability checks</small>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator warn"></span>
+                        <div>
+                            <strong>Operations Visibility</strong>
+                            <small>Sales, profit, and GST reporting across stores</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mini-stat-grid">
+                <div class="mini-stat">
+                    <span class="floating-label">Workflows</span>
+                    <strong>Doctor + Admin + Pharmacist</strong>
+                </div>
+                <div class="mini-stat">
+                    <span class="floating-label">Fulfillment</span>
+                    <strong>Full or Partial Billing</strong>
+                </div>
+            </div>
         </div>
     </div>
 </section>
 
 <script>
-const particlesContainer = document.querySelector('.particles');
+const particlesContainer = document.querySelector(".particles");
 
 for (let i = 0; i < 40; i++) {
-    const particle = document.createElement('span');
-    particle.classList.add('particle');
+    const particle = document.createElement("span");
+    particle.classList.add("particle");
     particle.style.left = Math.random() * 100 + "vw";
     particle.style.animationDuration = (5 + Math.random() * 10) + "s";
     particle.style.animationDelay = Math.random() * 5 + "s";

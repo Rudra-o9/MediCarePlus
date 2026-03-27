@@ -5,19 +5,32 @@
 <link rel="stylesheet" href="{% static 'css/base.css' %}">
 
 <div class="card">
+    <div class="auth-utility-row">
+        <a href="{% url 'home' %}" class="ghost-link">
+            <span class="ghost-link-icon">&lt;</span>
+            <span class="ghost-link-copy">
+                <strong>Back to Home</strong>
+                <small>Return to the landing page</small>
+            </span>
+        </a>
+    </div>
+
     <span class="role-badge">
         Secure Login
     </span>
 
     <h2>Welcome Back</h2>
+    <p class="message-text">
+        Sign in to continue to your role-based MediCarePlus workspace.
+    </p>
 
     {% if form.errors %}
-        <div style="color:#ffb3b3; font-size:14px; margin-bottom:10px;">
+        <div class="auth-error">
             Invalid email or password
         </div>
     {% endif %}
 
-    <form method="POST">
+    <form method="POST" class="auth-form">
         {% csrf_token %}
 
         <input type="email"
@@ -35,7 +48,8 @@
 
     <div class="links">
         Doctor? <a href="{% url 'doctor_register' %}">Register</a><br>
-        Pharmacist? <a href="{% url 'pharmacist_register' %}">Register</a>
+        Pharmacist? <a href="{% url 'pharmacist_register' %}">Register</a><br>
+        <a href="{% url 'home' %}">Return to landing page</a>
     </div>
 </div>
 

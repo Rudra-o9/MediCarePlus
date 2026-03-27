@@ -1,25 +1,103 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Category Sales Report{% endblock %}
+
+{% block sidebar %}
+{% if user.role == "ADMIN" %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'manage_categories' %}">Categories</a>
+<a href="{% url 'manage_medicines' %}">Medicines</a>
+<a href="{% url 'category_sales_report' %}" class="active">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+{% else %}
+<a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'category_sales_report' %}" class="active">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+{% endif %}
+{% endblock %}
+
 {% block content %}
-<h2>Category Sales Report</h2>
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Categories</h4>
+        <p>{{ category_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Quantity Sold</h4>
+        <p>{{ total_category_quantity }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Sales Value</h4>
+        <p>Rs. {{ total_category_sales_value|floatformat:2 }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Window</h4>
+        <p>{% if start_date or end_date %}Filtered{% else %}All Time{% endif %}</p>
+    </div>
+</div>
 
-<form method="get">
-    <label>Start Date: <input type="date" name="start_date" value="{{ start_date }}"></label>
-    <label>End Date: <input type="date" name="end_date" value="{{ end_date }}"></label>
-    <button type="submit">Filter</button>
-</form>
+<div class="chart-card sales-filter-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Filters</span>
+            <h3>Refine Category Sales</h3>
+            <p>Compare category-level movement over a specific sales period.</p>
+        </div>
+    </div>
+    <form method="get" class="sales-filter-form">
+        <div class="sales-filter-grid">
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" name="start_date" value="{{ start_date|default:'' }}">
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" name="end_date" value="{{ end_date|default:'' }}">
+            </div>
+        </div>
+        <div class="sales-filter-actions">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{% url 'category_sales_report' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
 
-<table border="1" cellpadding="5">
-    <tr>
-        <th>Category</th>
-        <th>Total Quantity Sold</th>
-        <th>Total Sales Value</th>
-    </tr>
-    {% for row in report_data %}
-    <tr>
-        <td>{{ row.category }}</td>
-        <td>{{ row.total_quantity }}</td>
-        <td>{{ row.total_sales_value }}</td>
-    </tr>
-    {% endfor %}
-</table>
+<div class="chart-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Sales Mix</span>
+            <h3>Category Sales Breakdown</h3>
+        </div>
+    </div>
+    <div class="sales-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Total Quantity Sold</th>
+                    <th>Total Sales Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report_data %}
+                <tr>
+                    <td>{{ row.category }}</td>
+                    <td>{{ row.total_quantity }}</td>
+                    <td>Rs. {{ row.total_sales_value|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No category sales data is available.</strong>
+                            <p>Try widening the report window or wait for more sale activity.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

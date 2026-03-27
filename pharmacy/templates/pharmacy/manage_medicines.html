@@ -1,0 +1,137 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Manage Medicines{% endblock %}
+
+{% block sidebar %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'store_management' %}">Stores</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'manage_categories' %}">Categories</a>
+<a href="{% url 'manage_suppliers' %}">Suppliers</a>
+<a href="{% url 'manage_medicines' %}" class="active">Medicines</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+<a href="{% url 'expiry_report' %}">Expiry Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
+<a href="{% url 'billing:medicine_profit_report' %}">Profit Report</a>
+<a href="{% url 'billing:gst_summary_report' %}">GST Report</a>
+{% endblock %}
+
+{% block content %}
+<div class="medicine-summary-grid">
+<div class="summary-card">
+<h4>Total Medicines</h4>
+<p>{{ medicine_count }}</p>
+</div>
+<div class="summary-card">
+<h4>Active Medicines</h4>
+<p>{{ active_medicine_count }}</p>
+</div>
+<div class="summary-card">
+<h4>Low Stock Medicines</h4>
+<p>{{ low_stock_medicine_count }}</p>
+</div>
+<div class="summary-card">
+<h4>Current Mode</h4>
+<p>{% if editing %}Editing{% else %}Create{% endif %}</p>
+</div>
+</div>
+
+<div class="chart-card form-card">
+<div class="section-heading medicine-heading">
+<div>
+<span class="section-kicker">Medicine Setup</span>
+<h3>{% if editing %}Edit Medicine{% else %}Create Medicine{% endif %}</h3>
+<p>Manage catalog details, pricing, tax, and reorder thresholds so billing and procurement stay consistent.</p>
+</div>
+{% if editing %}
+<a href="{% url 'manage_medicines' %}" class="btn btn-secondary">Create New Instead</a>
+{% endif %}
+</div>
+<form method="post" class="patient-form">
+{% csrf_token %}
+{% if form.non_field_errors %}
+<div class="form-errors">
+{% for error in form.non_field_errors %}
+<small>{{ error }}</small>
+{% endfor %}
+</div>
+{% endif %}
+<div class="form-grid">
+{% for field in form %}
+<div class="form-group {% if field.name == 'description' %}full-width{% endif %}">
+<label>{{ field.label }}</label>
+{{ field }}
+{% if field.errors %}
+<small>{{ field.errors|join:", " }}</small>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+<button type="submit" class="btn btn-primary">{% if editing %}Update{% else %}Create{% endif %} Medicine</button>
+</form>
+</div>
+
+<div class="chart-card">
+<div class="section-heading medicine-heading">
+<div>
+<span class="section-kicker">Directory</span>
+<h3>Medicine Directory</h3>
+<p>Review medicine pricing, tax setup, stock safety thresholds, and quickly jump into edits when a product needs correction.</p>
+</div>
+</div>
+<div class="medicine-table-wrap">
+<table class="report-table">
+<thead>
+<tr>
+<th>Name</th>
+<th>Manufacturer</th>
+<th>Category</th>
+<th>Selling Price</th>
+<th>GST %</th>
+<th>In Stock</th>
+<th>Low Stock Threshold</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+{% for medicine in medicines %}
+<tr>
+<td>
+<div class="medicine-name-cell">
+<strong>{{ medicine.name }}</strong>
+<small>{{ medicine.hsn_code|default:"No HSN code added" }}</small>
+</div>
+</td>
+<td>{{ medicine.manufacturer|default:"-" }}</td>
+<td>{{ medicine.category.name }}</td>
+<td>{{ medicine.default_selling_price }}</td>
+<td>{{ medicine.gst_percentage }}</td>
+<td>{{ medicine.stock_quantity }}</td>
+<td>{{ medicine.low_stock_threshold }}</td>
+<td>
+{% if medicine.is_active %}
+<span class="status-badge">Active</span>
+{% else %}
+<span class="status-critical">Inactive</span>
+{% endif %}
+</td>
+<td><a href="{% url 'edit_medicine' medicine.id %}" class="btn btn-edit">Edit</a></td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="9" class="empty-cell">
+<div class="approval-empty-state">
+<strong>No medicines created yet.</strong>
+<p>Add your first medicine to populate the catalog for procurement, billing, and stock tracking.</p>
+</div>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+{% endblock %}

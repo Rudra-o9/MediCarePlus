@@ -1,19 +1,81 @@
-<h2>Supplier Purchase Report</h2>
+{% extends "dashboard_base.html" %}
 
-<table border="1" cellpadding="8">
-    <tr>
-        <th>Supplier</th>
-        <th>Total Batches</th>
-        <th>Total Quantity</th>
-        <th>Total Purchase Value</th>
-    </tr>
+{% block page_title %}Supplier Purchase Report{% endblock %}
 
-    {% for row in report_data %}
-    <tr>
-        <td>{{ row.supplier.name }}</td>
-        <td>{{ row.total_batches }}</td>
-        <td>{{ row.total_quantity }}</td>
-        <td>{{ row.total_value }}</td>
-    </tr>
-    {% endfor %}
-</table>
+{% block sidebar %}
+{% if user.role == "ADMIN" %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'manage_suppliers' %}">Suppliers</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'supplier_purchase_report' %}" class="active">Supplier Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+{% else %}
+<a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'supplier_purchase_report' %}" class="active">Supplier Report</a>
+<a href="{% url 'category_sales_report' %}">Category Report</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Suppliers</h4>
+        <p>{{ supplier_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total Quantity</h4>
+        <p>{{ total_supplier_quantity }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Purchase Value</h4>
+        <p>Rs. {{ total_supplier_value|floatformat:2 }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Focus</h4>
+        <p>Procurement Mix</p>
+    </div>
+</div>
+
+<div class="chart-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Suppliers</span>
+            <h3>Supplier Purchase Breakdown</h3>
+            <p>Review how much inventory has been sourced from each supplier by batch count, quantity, and purchase value.</p>
+        </div>
+    </div>
+
+    <div class="sales-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th>Total Batches</th>
+                    <th>Total Quantity</th>
+                    <th>Total Purchase Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report_data %}
+                <tr>
+                    <td>{{ row.supplier.name }}</td>
+                    <td>{{ row.total_batches }}</td>
+                    <td>{{ row.total_quantity }}</td>
+                    <td>Rs. {{ row.total_value|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No supplier procurement data is available.</strong>
+                            <p>Procure stock first to populate this supplier-level report.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

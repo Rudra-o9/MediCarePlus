@@ -1,9 +1,11 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from accounts.models import Area, City
 from patients.models import Patient
 from consultations.models import Consultation, Prescription, PrescriptionItem
-from pharmacy.models import MedicineCategory, Medicine, Supplier, Batch
+from pharmacy.models import MedicineCategory, Medicine, Supplier, Batch, Store
 from billing.models import Invoice, InvoiceItem, Payment
+from billing.services.invoice_service import InvoiceService
 
 User = get_user_model()
 
@@ -11,6 +13,8 @@ User = get_user_model()
 class FullWorkflowTest(TestCase):
 
     def setUp(self):
+        self.city = City.objects.create(name="Surat", state="Gujarat", country="India")
+        self.area = Area.objects.create(city=self.city, name="Adajan")
 
         # Users
         self.doctor = User.objects.create_user(
@@ -19,6 +23,8 @@ class FullWorkflowTest(TestCase):
             role="DOCTOR",
             full_name="Doctor",
             phone="111",
+            city=self.city,
+            area=self.area,
             is_approved=True
         )
 
@@ -28,6 +34,8 @@ class FullWorkflowTest(TestCase):
             role="PHARMACIST",
             full_name="Pharmacist",
             phone="222",
+            city=self.city,
+            area=self.area,
             is_approved=True
         )
 
@@ -37,6 +45,8 @@ class FullWorkflowTest(TestCase):
             age=30,
             gender="MALE",
             phone="999",
+            city=self.city,
+            area=self.area,
             created_by=self.doctor
         )
 
@@ -54,8 +64,15 @@ class FullWorkflowTest(TestCase):
             name="Test Supplier",
             phone="111"
         )
+        self.store = Store.objects.create(
+            name="Main Store",
+            city=self.city,
+            area=self.area
+        )
+        self.store.staff.add(self.pharmacist)
 
         self.batch = Batch.objects.create(
+            store=self.store,
             medicine=self.medicine,
             supplier=supplier,
             batch_number="B1",
@@ -77,6 +94,9 @@ class FullWorkflowTest(TestCase):
         prescription = Prescription.objects.create(
             consultation=consultation
         )
+        prescription.assigned_store = self.store
+        prescription.routing_status = "SENT"
+        prescription.save(update_fields=["assigned_store", "routing_status"])
 
         # Prescription Item
         p_item = PrescriptionItem.objects.create(
@@ -109,6 +129,7 @@ class FullWorkflowTest(TestCase):
             method="CASH",
             received_by=self.pharmacist
         )
+        InvoiceService.process_payment(invoice, self.pharmacist)
 
         # Refresh objects
         self.batch.refresh_from_db()

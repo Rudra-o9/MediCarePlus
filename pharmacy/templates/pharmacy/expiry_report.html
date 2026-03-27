@@ -1,34 +1,95 @@
-<h2>Expiry Report</h2>
+{% extends "dashboard_base.html" %}
 
-<table>
+{% block page_title %}Expiry Report{% endblock %}
 
-<tr>
-<th>Medicine</th>
-<th>Batch</th>
-<th>Expiry Date</th>
-<th>Quantity</th>
-</tr>
+{% block sidebar %}
+{% if user.role == "ADMIN" %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'store_management' %}">Stores</a>
+<a href="{% url 'procurement_management' %}">Procurement</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'stock_report' %}">Stock Report</a>
+<a href="{% url 'expiry_report' %}" class="active">Expiry Report</a>
+<a href="{% url 'supplier_purchase_report' %}">Supplier Report</a>
+{% else %}
+<a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'low_stock_medicines' %}">Low Stock</a>
+<a href="{% url 'near_expiry_batches' %}">Near Expiry</a>
+<a href="{% url 'expired_batches' %}">Expired</a>
+<a href="{% url 'expiry_report' %}" class="active">Expiry Report</a>
+{% endif %}
+{% endblock %}
 
-{% for batch in batches %}
+{% block content %}
+<div class="sales-summary-grid">
+    <div class="summary-card">
+        <h4>Window</h4>
+        <p>{{ today|date:"d M" }} - {{ limit|date:"d M Y" }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Expiring Batches</h4>
+        <p>{{ batch_count }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Units at Risk</h4>
+        <p>{{ total_quantity }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Report Focus</h4>
+        <p>Expiry Planning</p>
+    </div>
+</div>
 
-<tr>
+<div class="chart-card">
+    <div class="section-heading">
+        <div>
+            <span class="section-kicker">Expiry</span>
+            <h3>30-Day Expiry Outlook</h3>
+            <p>Track medicine batches that need fast movement, markdowns, or procurement replacement before they cross the expiry boundary.</p>
+        </div>
+    </div>
 
-<td>{{ batch.medicine.name }}</td>
-
-<td>{{ batch.batch_number }}</td>
-
-<td>{{ batch.expiry_date }}</td>
-
-<td>{{ batch.quantity }}</td>
-
-</tr>
-
-{% empty %}
-
-<tr>
-<td colspan="4">No medicines expiring soon.</td>
-</tr>
-
-{% endfor %}
-
-</table>
+    <div class="sales-table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Batch Number</th>
+                    <th>Expiry Date</th>
+                    <th>Quantity</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for batch in batches %}
+                <tr>
+                    <td>{{ batch.medicine.name }}</td>
+                    <td>{{ batch.batch_number }}</td>
+                    <td>{{ batch.expiry_date|date:"d M Y" }}</td>
+                    <td>{{ batch.quantity }}</td>
+                    <td>
+                        {% if batch.expiry_date <= today %}
+                        <span class="status-critical">Expired</span>
+                        {% elif batch.expiry_date <= urgent_limit %}
+                        <span class="status-warning">Urgent</span>
+                        {% else %}
+                        <span class="status-low">Near Expiry</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-cell">
+                        <div class="approval-empty-state">
+                            <strong>No medicines are expiring in the next 30 days.</strong>
+                            <p>Your short-term expiry outlook is currently clear.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

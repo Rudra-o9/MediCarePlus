@@ -1,0 +1,182 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}GST Summary Report{% endblock %}
+
+{% block sidebar %}
+{% if user.role == "ADMIN" %}
+<a href="{% url 'admin_dashboard' %}">Dashboard</a>
+<a href="{% url 'approve_doctors' %}">Approve Doctors</a>
+<a href="{% url 'approve_pharmacists' %}">Approve Pharmacists</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
+<a href="{% url 'billing:medicine_profit_report' %}">Profit Report</a>
+<a href="{% url 'billing:gst_summary_report' %}" class="active">GST Report</a>
+{% else %}
+<a href="{% url 'pharmacist_dashboard' %}">Dashboard</a>
+<a href="{% url 'medicine_list' %}">Medicines</a>
+<a href="{% url 'low_stock_medicines' %}">Low Stock</a>
+<a href="{% url 'near_expiry_batches' %}">Near Expiry</a>
+<a href="{% url 'expired_batches' %}">Expired</a>
+<a href="{% url 'billing:sales_report' %}">Sales Report</a>
+<a href="{% url 'billing:gst_summary_report' %}" class="active">GST Report</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="gst-summary-grid">
+    <div class="summary-card">
+        <h4>Report Scope</h4>
+        <p>{% if report_store %}{{ report_store.name }}{% else %}All Stores{% endif %}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Date Window</h4>
+        <p>{{ start_date|date:"d M" }} - {{ end_date|date:"d M Y" }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Taxable Value</h4>
+        <p>Rs. {{ summary.taxable_value }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Total GST</h4>
+        <p>Rs. {{ summary.total_gst }}</p>
+    </div>
+    <div class="summary-card">
+        <h4>Gross Total</h4>
+        <p>Rs. {{ summary.gross_total }}</p>
+    </div>
+</div>
+
+<div class="chart-card gst-filter-card">
+    <div class="section-heading gst-heading">
+        <div>
+            <span class="section-kicker">Filters</span>
+            <h3>Refine GST Window</h3>
+            <p>Inspect tax liability by period and store so CGST, SGST, and gross totals stay easy to reconcile before export.</p>
+        </div>
+        <div class="profit-action-group">
+            <a href="?export=csv&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% if selected_store_id %}&store={{ selected_store_id }}{% endif %}" class="btn btn-secondary">
+                Export CSV
+            </a>
+            {% if report_store %}
+            <div class="sales-scope-chip">
+                <strong>{{ report_store.name }}</strong>
+                <span>
+                    {% if report_store.city %}{{ report_store.city.name }}{% endif %}
+                    {% if report_store.area %}, {{ report_store.area.name }}{% else %}{% if not report_store.city %}Store scope active{% endif %}{% endif %}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="get" class="sales-filter-form">
+        <div class="sales-filter-grid">
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+            </div>
+            {% if user.role == "ADMIN" %}
+            <div class="form-group sales-filter-store">
+                <label>Store</label>
+                <select name="store">
+                    <option value="">All Stores</option>
+                    {% for store in stores %}
+                    <option value="{{ store.id }}" {% if selected_store_id == store.id|stringformat:"s" %}selected{% endif %}>
+                        {{ store.name }} - {{ store.city.name }}{% if store.area %}, {{ store.area.name }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+        <div class="sales-filter-actions">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{% url 'billing:gst_summary_report' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="dashboard-grid small-cards gst-kpi-grid">
+    <div class="dashboard-card card-teal">
+        <h3>CGST Total</h3>
+        <p>Rs. {{ summary.cgst_total }}</p>
+    </div>
+    <div class="dashboard-card card-purple">
+        <h3>SGST Total</h3>
+        <p>Rs. {{ summary.sgst_total }}</p>
+    </div>
+    <div class="dashboard-card">
+        <h3>Taxable Base</h3>
+        <p>Rs. {{ summary.taxable_value }}</p>
+    </div>
+    <div class="dashboard-card card-green">
+        <h3>Gross Total</h3>
+        <p>Rs. {{ summary.gross_total }}</p>
+    </div>
+</div>
+
+<div class="chart-card">
+    <div class="section-heading gst-heading">
+        <div>
+            <span class="section-kicker">Breakdown</span>
+            <h3>Medicine-wise GST Breakdown</h3>
+            <p>Line-by-line tax view across sold medicines, including HSN mapping, taxable value, CGST, SGST, and gross totals.</p>
+        </div>
+        <div class="sales-scope-chip sales-scope-chip-compact">
+            <strong>{{ rows|length }} medicine lines</strong>
+            <span>Filtered GST entries in the current report window</span>
+        </div>
+    </div>
+
+    <div class="sales-table-wrap">
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Medicine</th>
+                <th>HSN Code</th>
+                <th>GST %</th>
+                <th>Qty Sold</th>
+                <th>Taxable Value</th>
+                <th>CGST</th>
+                <th>SGST</th>
+                <th>Total GST</th>
+                <th>Gross Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>
+                    <div class="sales-medicine-cell">
+                        <strong>{{ row.medicine_name }}</strong>
+                        <small>GST tracked sale line</small>
+                    </div>
+                </td>
+                <td>{{ row.hsn_code|default:"-" }}</td>
+                <td>{{ row.gst_percentage }}%</td>
+                <td>{{ row.quantity_sold }}</td>
+                <td>Rs. {{ row.taxable_value }}</td>
+                <td>Rs. {{ row.cgst_total }}</td>
+                <td>Rs. {{ row.sgst_total }}</td>
+                <td>Rs. {{ row.total_gst }}</td>
+                <td>Rs. {{ row.gross_total }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="empty-cell">
+                    <div class="approval-empty-state">
+                        <strong>No GST sales data available for the selected period.</strong>
+                        <p>Try widening the date range or changing the selected store to surface GST-linked invoice rows.</p>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+{% endblock %}

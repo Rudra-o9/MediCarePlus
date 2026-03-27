@@ -9,7 +9,7 @@
 
 <div class="chart-card">
 
-<h3>🩺 Consultation Detail</h3>
+<h3>Consultation Detail</h3>
 
 <table class="report-table">
 
@@ -29,18 +29,36 @@
 </tr>
 
 {% for prescription in consultation.prescriptions.all %}
-
 <tr>
 <th>Prescription Status</th>
-<td>{{ prescription.status }}</td>
+<td>{{ prescription.get_status_display }}</td>
 </tr>
+<tr>
+<th>Routing Status</th>
+<td>{{ prescription.get_routing_status_display }}</td>
+</tr>
+{% if prescription.assigned_store %}
+<tr>
+<th>Assigned Store</th>
+<td>{{ prescription.assigned_store.name }}</td>
+</tr>
+<tr>
+<th>Store Contact</th>
+<td>
+{{ prescription.assigned_store.phone|default:"-" }}
+{% if prescription.assigned_store.email %}
+| {{ prescription.assigned_store.email }}
+{% endif %}
+</td>
+</tr>
+{% endif %}
 {% endfor %}
 
 </table>
 
 <hr>
 
-<h3>🫀 Vitals</h3>
+<h3>Vitals</h3>
 
 <table class="report-table">
 <tr>
@@ -61,15 +79,15 @@
 
 <hr>
 
-<h3>🤒 Symptoms</h3>
+<h3>Symptoms</h3>
 <p>{{ consultation.symptoms|default:"No symptoms recorded." }}</p>
 
-<h3>📝 Notes</h3>
+<h3>Notes</h3>
 <p>{{ consultation.notes|default:"No notes added." }}</p>
 
 <hr>
 
-<h3>🧠 Diagnoses</h3>
+<h3>Diagnoses</h3>
 
 <ul>
 {% for diagnosis in consultation.diagnoses.all %}
@@ -86,38 +104,181 @@
 
 <hr>
 
-<h3>💊 Prescription</h3>
+<h3>Prescription</h3>
 
 <ul>
 {% for prescription in consultation.prescriptions.all %}
-
-```
 {% for item in prescription.items.all %}
-    <li>
-    {{ item.medicine.name }} —
-    {{ item.dosage }},
-    {{ item.frequency }},
-    {{ item.duration_days }} days
-    </li>
+<li>
+{{ item.medicine.name }} -
+{{ item.dosage }},
+{{ item.frequency }},
+{{ item.duration_days }} days,
+Qty {{ item.quantity_prescribed }}
+</li>
 {% empty %}
-    <li>No medicines added.</li>
+<li>No medicines added.</li>
 {% endfor %}
-```
-
 {% endfor %}
-
 </ul>
+
+{% if previous_consultations %}
+<hr>
+
+<h3>Previous Treatments</h3>
+
+<table class="report-table">
+<thead>
+<tr>
+<th>Visit</th>
+<th>Date</th>
+<th>Doctor</th>
+<th>Diagnosis</th>
+<th>Medicines</th>
+</tr>
+</thead>
+<tbody>
+{% for visit in previous_consultations %}
+<tr>
+<td>{{ visit.visit_number }}</td>
+<td>{{ visit.consultation_date|date:"d M Y" }}</td>
+<td>{{ visit.doctor.full_name|default:"-" }}</td>
+<td>
+{% for diagnosis in visit.diagnoses.all %}
+{{ diagnosis.name }}{% if not forloop.last %}, {% endif %}
+{% empty %}
+-
+{% endfor %}
+</td>
+<td>
+{% for prescription in visit.prescriptions.all %}
+{% for item in prescription.items.all %}
+{{ item.medicine.name }}{% if not forloop.last %}, {% endif %}
+{% empty %}
+-
+{% endfor %}
+{% empty %}
+-
+{% endfor %}
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+{% if previous_purchases %}
+<hr>
+
+<h3>Recent Purchase History</h3>
+
+<table class="report-table">
+<thead>
+<tr>
+<th>Medicine</th>
+<th>Quantity</th>
+<th>Store</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody>
+{% for purchase in previous_purchases %}
+<tr>
+<td>{{ purchase.invoice_item.medicine.name }}</td>
+<td>{{ purchase.quantity }}</td>
+<td>{{ purchase.invoice_item.invoice.prescription.assigned_store.name|default:"-" }}</td>
+<td>{{ purchase.invoice_item.invoice.created_at|date:"d M Y" }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+{% if user.role == "DOCTOR" and primary_prescription and primary_prescription.items.exists %}
+<hr>
+
+<h3>Nearby Store Ranking</h3>
+
+{% if store_rankings %}
+<table class="report-table">
+<thead>
+<tr>
+<th>Store</th>
+<th>Location</th>
+<th>Match</th>
+<th>Details</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+{% for row in store_rankings %}
+<tr>
+<td>{{ row.store.name }}</td>
+<td>{{ row.store.city.name }}{% if row.store.area %}, {{ row.store.area.name }}{% endif %}</td>
+<td>{{ row.matched_items }}/{{ row.total_items }} items, {{ row.available_units }}/{{ row.requested_units }} units</td>
+<td>
+{% if row.is_full_match %}Full match{% elif row.partial_items %}Best partial match{% else %}Unavailable{% endif %}
+<br>
+Contact: {{ row.store.phone|default:"-" }}
+<br>
+Pharmacists:
+{% for pharmacist_name in row.pharmacist_names %}
+{{ pharmacist_name }}{% if not forloop.last %}, {% endif %}
+{% empty %}
+No staff assigned
+{% endfor %}
+<br>
+Available:
+{% for line in row.matched_lines %}
+{{ line }}{% if not forloop.last %}, {% endif %}
+{% empty %}
+-
+{% endfor %}
+{% if row.partial_lines %}
+<br>
+Partial:
+{% for line in row.partial_lines %}
+{{ line }}{% if not forloop.last %}, {% endif %}
+{% endfor %}
+{% endif %}
+{% if row.missing_lines %}
+<br>
+Missing:
+{% for line in row.missing_lines %}
+{{ line }}{% if not forloop.last %}, {% endif %}
+{% endfor %}
+{% endif %}
+</td>
+<td>
+{% if row.matched_items or row.partial_items %}
+<form method="post" action="{% url 'consultations:route_prescription' primary_prescription.id %}">
+{% csrf_token %}
+<input type="hidden" name="store_id" value="{{ row.store.id }}">
+<button type="submit" class="btn btn-primary">Send Prescription</button>
+</form>
+{% else %}
+-
+{% endif %}
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p>No eligible nearby store found for this prescription yet.</p>
+{% endif %}
+{% endif %}
 
 {% if consultation.status == "OPEN" and user.role == "DOCTOR" %}
 
 <hr>
 
 <a href="{% url 'consultations:add_diagnosis' consultation.pk %}" class="btn btn-primary">
-➕ Add Diagnosis
+Add Diagnosis
 </a>
 
 <a href="{% url 'consultations:add_prescription' consultation.pk %}" class="btn btn-consult">
-💊 Add Prescription
+Add Prescription
 </a>
 
 {% endif %}
