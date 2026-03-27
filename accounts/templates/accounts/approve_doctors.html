@@ -103,6 +103,12 @@
 
                                 <form method="post" action="{% url 'reject_user' doctor.id %}">
                                     {% csrf_token %}
+                                    <textarea
+                                        name="rejection_reason"
+                                        rows="2"
+                                        placeholder="Optional rejection reason for the doctor"
+                                        style="width:100%; margin-bottom:8px;"
+                                    ></textarea>
                                     <button type="submit" class="reject-btn">Reject</button>
                                 </form>
                             </div>

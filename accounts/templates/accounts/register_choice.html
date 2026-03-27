@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/base.css' %}">
+
+<div class="card">
+    <div class="auth-utility-row">
+        <a href="{% url 'home' %}" class="ghost-link">
+            <span class="ghost-link-icon">&lt;</span>
+            <span class="ghost-link-copy">
+                <strong>Back to Home</strong>
+                <small>Return to the landing page</small>
+            </span>
+        </a>
+    </div>
+
+    <span class="role-badge">
+        Account Registration
+    </span>
+
+    <h2>Choose Your Role</h2>
+    <p class="message-text">
+        Select the account type you want to create.
+    </p>
+
+    <div class="links" style="display:flex; flex-direction:column; gap:12px; margin-top:24px;">
+        <a href="{% url 'doctor_register' %}" class="btn btn-primary" style="text-align:center;">Register as Doctor</a>
+        <a href="{% url 'pharmacist_register' %}" class="btn btn-success" style="text-align:center;">Register as Pharmacist</a>
+        <a href="{% url 'login' %}">Already have an account? Login here</a>
+    </div>
+</div>
+
+{% endblock %}

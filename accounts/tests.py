@@ -85,6 +85,46 @@ class AuthenticationTests(TestCase):
         response = self.client.get(reverse('pharmacist_dashboard'))
         self.assertEqual(response.status_code, 302)
 
+    def test_doctor_logout_redirects_to_home_and_clears_session(self):
+        user = User.objects.create_user(
+            email='doctor-logout@test.com',
+            password='StrongPass123',
+            role='DOCTOR',
+            is_approved=True,
+            full_name='Logout Doctor',
+            phone='7777777778',
+            city=self.city,
+            area=self.area
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse('logout'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse('home'))
+        follow_response = self.client.get(reverse('doctor_dashboard'))
+        self.assertEqual(follow_response.status_code, 302)
+
+    def test_pharmacist_logout_redirects_to_home_and_clears_session(self):
+        user = User.objects.create_user(
+            email='pharma-logout@test.com',
+            password='StrongPass123',
+            role='PHARMACIST',
+            is_approved=True,
+            full_name='Logout Pharmacist',
+            phone='8888888889',
+            city=self.city,
+            area=self.area
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse('logout'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse('home'))
+        follow_response = self.client.get(reverse('pharmacist_dashboard'))
+        self.assertEqual(follow_response.status_code, 302)
+
 
 class AdminOperationsTests(TestCase):
 
@@ -388,3 +428,47 @@ class AdminOperationsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Registration Closed")
+
+    def test_reject_user_marks_status_and_keeps_account(self):
+        doctor = User.objects.create_user(
+            email="reject-doctor@test.com",
+            password="StrongPass123",
+            role="DOCTOR",
+            full_name="Reject Doctor",
+            phone="9991234567",
+            city=self.city,
+            area=self.area,
+            is_approved=False,
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.post(reverse("reject_user", args=[doctor.id]), {
+            "rejection_reason": "License document is not valid.",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        doctor.refresh_from_db()
+        self.assertEqual(doctor.approval_status, "REJECTED")
+        self.assertEqual(doctor.rejection_reason, "License document is not valid.")
+        self.assertFalse(doctor.is_approved)
+
+    def test_rejected_user_sees_rejection_message_on_pending_page(self):
+        doctor = User.objects.create_user(
+            email="pending-reject@test.com",
+            password="StrongPass123",
+            role="DOCTOR",
+            full_name="Pending Reject Doctor",
+            phone="9991234568",
+            city=self.city,
+            area=self.area,
+            is_approved=False,
+            approval_status="REJECTED",
+            rejection_reason="Certificate upload was unclear.",
+        )
+        self.client.force_login(doctor)
+
+        response = self.client.get(reverse("pending"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registration Decision Available")
+        self.assertContains(response, "Certificate upload was unclear.")

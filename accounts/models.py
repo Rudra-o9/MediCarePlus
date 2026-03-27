@@ -66,6 +66,8 @@ class CustomUserManager(BaseUserManager):
             raise ValueError("Users must have an email address")
 
         email = self.normalize_email(email)
+        if "approval_status" not in extra_fields:
+            extra_fields["approval_status"] = "APPROVED" if extra_fields.get("is_approved") else "PENDING"
         user = self.model(email=email, role=role, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -76,6 +78,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('role', 'ADMIN')
         extra_fields.setdefault('is_approved', True)
+        extra_fields.setdefault('approval_status', 'APPROVED')
 
         return self.create_user(email, password, **extra_fields)
 
@@ -97,6 +100,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ('DOCTOR', 'Doctor'),
         ('PHARMACIST', 'Pharmacist'),
     )
+    APPROVAL_STATUS_CHOICES = (
+        ("PENDING", "Pending"),
+        ("APPROVED", "Approved"),
+        ("REJECTED", "Rejected"),
+    )
 
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
@@ -117,6 +125,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     )
 
     is_approved = models.BooleanField(default=False)
+    approval_status = models.CharField(
+        max_length=20,
+        choices=APPROVAL_STATUS_CHOICES,
+        default="PENDING",
+    )
+    rejection_reason = models.TextField(blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
 
     full_name = models.CharField(max_length=150)
     phone = models.CharField(max_length=15)

@@ -30,6 +30,15 @@
 </div>
 
 <div class="right-panel">
+    {% if messages %}
+    <div style="padding:24px 24px 0;">
+        {% for message in messages %}
+        <div class="{% if message.tags == 'error' %}auth-error{% endif %}" style="margin-bottom:12px;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
 </div>
 
